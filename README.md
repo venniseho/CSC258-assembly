@@ -1,0 +1,4 @@
+- [X] **medicine_bottle_display**
+- [X] **generate_colour**
+- [X] **generate_pill** (edited to use array)
+- [ ] **move_pill** (currently `move_pixel`)
