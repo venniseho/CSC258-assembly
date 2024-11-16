@@ -30,6 +30,7 @@ red:            .word 0xff0000
 yellow:         .word 0xffff00
 blue:           .word 0x00ffff
 white:          .word 0xffffff
+left_init_position:     .word 2352
 ##############################################################################
 # Mutable Data
 ##############################################################################
@@ -142,10 +143,11 @@ draw_bottle:
 # END DRAW_BOTTLE
 
 # FUNCTION THAT GENERATES A RANDOM BI-COLOURED PILL AND DRAWS IT AT THE TOP OF THE BOTTLE
-# registers: t0 (bitmap pointer), t5 (game_array address), v0 (return val from generate_colour)
+# registers: t0 (bitmap pointer), t1 (initial position of left half), t5 (game_array address), v0 (return val from generate_colour)
 generate_pill: 
-    lw $t0, ADDR_DSPL      # load displayAddress into $t0 (= bitmap pointer)
-    addi $t0, $t0, 2236         # point bitmap pointer to top of bottle
+    lw $t0, ADDR_DSPL           # load displayAddress into $t0 (= bitmap pointer)
+    lw $t1, left_init_position
+    add $t0, $t0, $t1           # point bitmap pointer to top of bottle
     
     la $t5, game_array          # t5 = address of game_array
     
