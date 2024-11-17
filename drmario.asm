@@ -26,15 +26,20 @@ ADDR_DSPL:
 ADDR_KBRD:
     .word 0xffff0000
 
-red:            .word 0xff0000
-yellow:         .word 0xffff00
-blue:           .word 0x00ffff
-white:          .word 0xffffff
-left_init_position:     .word 2352
+red:                    .word 0xff0000
+yellow:                 .word 0xffff00
+blue:                   .word 0x00ffff
+white:                  .word 0xffffff
+black:                  .word 0x000000
+left_init_position:     .word 2236
+
 ##############################################################################
 # Mutable Data
 ##############################################################################
-game_array:     .word 0:128
+game_array:             .word 0:128
+row:                    .word 0
+column:                 .word 0
+
 ##############################################################################
 # Code
 ##############################################################################
@@ -64,7 +69,7 @@ game_loop:
 ##############################################################################
 
 # FUNCTION THAT DRAWS THE BOTTLE
-# registers used: t0 (bitmap pointer), t1 (counter for x/y), t2 (bound for counter - t1), t9 (the colour white)
+# registers used: t0 (bitmap pointer), t1 (counter for x/y), t9 (the colour white)
 draw_bottle:
     lw $t0, ADDR_DSPL           # load displayAddress into $t0 (= bitmap pointer)
     addi $t0, $t0, 1716              # shift the bitmap pointer ($t0) to the start of the bottle (top left unit) (13, 13) --> 13*4*32 + 13*4
@@ -116,7 +121,6 @@ draw_bottle:
     # END OF BOTTLE BODY #
     
     add $t1, $zero, $zero       # initialize $t1 = counter for y
-    addi $t2, $zero, 14         # $t2 = height of the sides (excluding top and bottom)    
     
     # START OF BOTTLE SIDES #
     bottle_body_side:
@@ -125,21 +129,20 @@ draw_bottle:
     addi $t0, $t0, 36
     sw $t9, 0($t0)                  # right side
     addi, $t1, $t1, 1
-    bne $t1, $t2, bottle_body_side  # loop 14 times
+    bne $t1, 14, bottle_body_side  # loop 14 times
+    # END OF BOTTLE SIDES #
     
     add $t1, $zero, $zero       # reassign $t1 = counter for x
-    addi $t2, $zero, 10         # $t2 = width of bottom
     addi $t0, $t0, 92           # shift to last row
-    # END OF BOTTLE SIDES #
     
     # START OF BOTTOM OF BOTTLE # 
     bottle_bottom:
     sw $t9, 0($t0)                  
     addi, $t0, $t0, 4
     addi, $t1, $t1, 1
-    bne $t1, $t2, bottle_bottom
+    bne $t1, 10, bottle_bottom
     # END OF BOTTOM OF BOTTLE # 
-    # jr $ra 
+    jr $ra 
 # END DRAW_BOTTLE
 
 # FUNCTION THAT GENERATES A RANDOM BI-COLOURED PILL AND DRAWS IT AT THE TOP OF THE BOTTLE
