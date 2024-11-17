@@ -44,7 +44,7 @@ init_y1:     .word 0
 init_x2:     .word 4
 init_y2:     .word 0
 
-game_board_offset:     .word 2224
+game_board_offset:     .word 1968
 ##############################################################################
 # Mutable Data
 ##############################################################################
@@ -71,10 +71,15 @@ colour_2:               .word 0             # current colour of half 2
     # Run the game.
 main:
     # Initialize the game
-    jal draw_bottle
-    jal generate_pill
-    jal update_capsule_location
+    jal draw_bottle                 # draw the bottle
+    
+    addi $a0, $zero, 4              # number of viruses 
+    jal generate_virus              # add viruses to game_array
+    
     jal update_display
+    jal generate_pill               # initialise pill in data (curr_x, curr_y, new_x, new_y)
+    jal update_capsule_location     # initialise location of pill
+    jal update_display              # draw the display
 
 game_loop:
     # 1a. Check if key has been pressed & 1b. Check which key has been pressed
@@ -120,8 +125,8 @@ game_loop:
 # FUNCTION THAT DRAWS THE BOTTLE
 # registers used: t0 (bitmap pointer), t1 (counter for x/y), t9 (the colour white)
 draw_bottle:
-    lw $t0, ADDR_DSPL           # load displayAddress into $t0 (= bitmap pointer)
-    addi $t0, $t0, 1716              # shift the bitmap pointer ($t0) to the start of the bottle (top left unit) (13, 13) --> 13*4*32 + 13*4
+    lw $t0, ADDR_DSPL                # load displayAddress into $t0 (= bitmap pointer)
+    addi $t0, $t0, 1460              # shift the bitmap pointer ($t0) to the start of the bottle (top left unit) 
     
     lw $t9, white               # $t9 = the colour white
     
@@ -178,7 +183,7 @@ draw_bottle:
     addi $t0, $t0, 36
     sw $t9, 0($t0)                  # right side
     addi, $t1, $t1, 1
-    bne $t1, 14, bottle_body_side  # loop 14 times
+    bne $t1, 16, bottle_body_side  # loop 16 times
     # END OF BOTTLE SIDES #
     
     add $t1, $zero, $zero       # reassign $t1 = counter for x
@@ -193,6 +198,63 @@ draw_bottle:
     # END OF BOTTOM OF BOTTLE # 
     jr $ra 
 # END DRAW_BOTTLE
+
+# START GENERATE_VIRUS
+# function that generates a random coloured virus at a random location in the bottom half of the bottle and stores the virus in the game_array
+# inputs: a0 (number of viruses to generate)
+# registers: t0 (game_array pointer), t1 (generated x value), t2 (generated y value), t3 (generated colour), t5 (game_array pointer), t6 (value at game_array pointer), t7 (loop bound), t8 (virus counter)
+generate_virus: 
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+    add $t7, $a0, $zero         # init loop bound to a0
+    add $t8, $zero, $zero       # init loop counter to 0
+    
+    generate_virus_loop:
+        la $t5, game_array          # load the base address of the game_array
+        
+        jal generate_colour         # generate the colour of the virus
+        add $t3, $v0, $zero         # store generated colour in t3
+        
+        # Generate x value (random number between 0 and 8 (exc.)) 
+        li $v0, 42                  # Syscall for random number (min = a0, max = a1)
+        li $a0, 0
+        li $a1, 8
+        syscall
+        add $t1, $a0, $zero         # t1 = generated x value
+        
+        # Generate y value (random number between 8 and 16 (exc.))
+        li $v0, 42             # Syscall for random number (min = a0, max = a1)
+        li $a0, 0
+        li $a1, 8
+        syscall
+        addi $t2, $a0, 8        # t2 = generated y value (+8 because the value generated is from 0-7, not 8-15)
+        
+        # Get array offset
+        add $a0, $t1, $zero         # a0 = x arg for xy_to_array
+        add $a1, $t2, $zero         # a1 = y arg for xy_to_array
+        jal xy_to_array
+        
+        # If the given address is empty, set the virus
+        # If the given address already contains a virus, loop again without setting.
+        add $t5, $t5, $v0                   # add offset to base game_array address
+        lw $t6, 0($t5)                      # load the value at the offset game_array address at t6
+        beq $t6, $zero, set_virus           # if the value is equal to 0 (is empty), set the virus
+        j next_generate_virus_loop          # otherwise, start the loop again
+        
+        set_virus:
+            sw $t3, 0($t5)              # store the colour of the virus at this offset
+            addi $t8, $t8, 1            # increase the virus counter by 1
+            j next_generate_virus_loop
+        
+        next_generate_virus_loop:
+        blt $t8, $t7, generate_virus_loop       # exit when t8 (virus counter) = t7 = a0 = loop bound       
+    
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+
+    jr $ra
+# END GENERATE_VIRUS
 
 # FUNCTION THAT GENERATES A RANDOM BI-COLOURED PILL AND DRAWS IT AT THE TOP OF THE BOTTLE
 # registers: t0 (game_array pointer), t1 (initial position of left half), t5 (game_array address), v0 (return val from generate_colour)
@@ -281,9 +343,6 @@ update_display:
     update_display_loop:
         lw $t7, 0($t5)            # load val at game_array[offset/4] into t7 (a colour)
         
-        # bne $t7, 0, display_pixel     # if not zero, convert array_to_bitmap. otherwise, continue without doing anything
-        # j increment_display_loop_vars
-        
         # display_pixel:
         add $a0, $t8, $zero             # array offset arg for array_to_xy
         jal array_to_xy
@@ -300,7 +359,7 @@ update_display:
         addi $t9, $t9, 1                        # increase loop counter by 1
         addi $t8, $t8, 4                        # increase offset counter by 4
         addi $t5, $t5, 4                        # increase array pointer by 4
-        bne $t9, 127, update_display_loop       # loop 128 times
+        blt $t9, 128, update_display_loop       # loop 128 times
         
     lw $ra, 0($sp)           # Load the saved value of $ra from the stack
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
