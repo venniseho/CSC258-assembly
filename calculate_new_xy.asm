@@ -36,7 +36,7 @@ colour_2:               .word 0             # current colour of half 2
 
 .text
 
-# START CALCULATE_NEXT_XY
+# START CALCULATE_NEW_XY
 # function that calculates the next_x and next_y position and stores the new positions in memory
 #       if the given key is one of w, a, s, d, write in a new_x and new_y
 #       otherwise, the given key is n new_x and new_y are assigned to curr_x and curr_y, respectively
@@ -44,7 +44,7 @@ colour_2:               .word 0             # current colour of half 2
 # note: all x and y's are in relation to the GAME ARRAY setup; no return, this function mutates
 # inputs: a0 (the given key; it will be one of w, a, s, d, n)
 # registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address), t5 (curr_y1), t6 (curr_y2), t7 (new_y1 address), t8 (new_y2 address) 
-calculate_next_xy:
+calculate_new_xy:
     lw $t1, curr_x1             # t1 = curr_x1
     lw $t2, curr_x2             # t2 = curr_x2
     la $t3, new_x1              # t3 = new_x1 address
@@ -110,4 +110,4 @@ calculate_next_xy:
        
     exit_calculate_next_xy:
     jr $ra
-# END CALCULATE_NEXT_XY
+# END CALCULATE_NEW_XY

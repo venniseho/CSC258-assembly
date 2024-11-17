@@ -39,8 +39,12 @@ s:          .word 0x73
 q:          .word 0x71
 n:          .word 0x6e
 
-game_board_offset:      .word 2224
+init_x1:     .word 3
+init_y1:     .word 0
+init_x2:     .word 4
+init_y2:     .word 0
 
+game_board_offset:     .word 2224
 ##############################################################################
 # Mutable Data
 ##############################################################################
@@ -69,6 +73,8 @@ main:
     # Initialize the game
     jal draw_bottle
     jal generate_pill
+    jal update_capsule_location
+    jal update_display
 
 game_loop:
     # 1a. Check if key has been pressed & 1b. Check which key has been pressed
@@ -78,8 +84,11 @@ game_loop:
     jal calculate_new_xy            # after this call, new_x and new_y will contain new positions
     
     # 2a. Check for collisions
-    
-    # if collision returns true (no collision) change curr_x to new_x and curr_y to new_y
+        
+	# 2b. Update locations (capsules)
+	jal update_capsule_location             # after this call, the game_array locations should be updated
+	
+	# if collision returns true (no collision) change curr_x to new_x and curr_y to new_y
         la $t1, curr_x1         # t1 = curr_x1 address
         lw $t2, new_x1          # t2 = new_x1
         sw $t2, 0($t1)          # store new_x1 at curr_x1 address
@@ -95,8 +104,6 @@ game_loop:
         la $t1, curr_y2         # t1 = curr_y2 address
         lw $t2, new_y2          # t2 = new_y2
         sw $t2, 0($t1)          # store new_y2 at curr_y2 address
-        
-	# 2b. Update locations (capsules)
 	
 	# 3. Draw the screen
 	jal update_display
@@ -188,23 +195,45 @@ draw_bottle:
 # END DRAW_BOTTLE
 
 # FUNCTION THAT GENERATES A RANDOM BI-COLOURED PILL AND DRAWS IT AT THE TOP OF THE BOTTLE
-# registers: t0 (bitmap pointer), t1 (initial position of left half), t5 (game_array address), v0 (return val from generate_colour)
+# registers: t0 (game_array pointer), t1 (initial position of left half), t5 (game_array address), v0 (return val from generate_colour)
 generate_pill: 
-    lw $t0, ADDR_DSPL           # load displayAddress into $t0 (= bitmap pointer)
-    lw $t1, game_board_offset
-    add $t0, $t0, $t1           # point bitmap pointer to top-left corner of bottle
-    
-    la $t5, game_array          # t5 = address of game_array
-    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+        
+    la $t7, colour_1            # t7 = address of colour_1
     jal generate_colour         # generate the left half of the pill and init at top of bottle
-    sw $v0, 12($t0)             # add colour to the bitmap 
-    sw $v0, 12($t5)             # add colour of left half of pill to game_array[3] 
+    sw $v0, 0($t7)              # store generated colour in colour_1
     
+    la $t9, curr_x1             # t9 = address of x1
+    la $t8, curr_y1             # t8 = address of y1
+    la $t6, new_x1              # t6 = address of new_x1
+    la $t5, new_y1              # t5 = address of new_y1
+    lw $t1, init_x1             # load initial x1 value into t1
+    lw $t2, init_y1             # load initial y1 value into t2
+    sw $t1, 0($t9)              # store intial x1 value in curr_x1
+    sw $t2, 0($t8)              # store intial y1 value in curr_y1
+    sw $t1, 0($t6)              # store intial x1 value in new_x1
+    sw $t2, 0($t5)              # store intial y1 value in new_y1
+    
+    la $t7, colour_2            # t7 = address of colour_1
     jal generate_colour         # generate the right half of the pill and init at top of bottle
-    sw $v0, 16($t0)
-    sw $v0, 16($t5)             # add colour of right half of pill to game_array[4]
+    sw $v0, 0($t7)              # store generated colour in colour_1
     
-jr $ra
+    la $t9, curr_x2             # t9 = address of x2
+    la $t8, curr_y2             # t8 = address of y2
+    la $t6, new_x2              # t6 = address of new_x2
+    la $t5, new_y2              # t5 = address of new_y2
+    lw $t1, init_x2             # load initial x2 value into t1
+    lw $t2, init_y2             # load initial y2 value into t2
+    sw $t1, 0($t9)              # store intial x2 value in curr_x2
+    sw $t2, 0($t8)              # store intial y2 value in curr_y2
+    sw $t1, 0($t6)              # store intial x2 value in new_x2
+    sw $t2, 0($t5)              # store intial y2 value in new_y2
+    
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    jr $ra
 # END GENERATE_PILL
 
 # FUNCTION THAT GENERATES A RANDOM COLOUR (red, yellow, blue)
@@ -241,14 +270,15 @@ generate_colour:
 # function that updates the display based on the game_array
 # registers: t0 (bitmap pointer), t5 (array pointer), t7 (value at game_array[offset/4]), t8 (offset counter), t9 (loop counter)
 update_display:
-    lw $t0, ADDR_DSPL         # load the base bitmap address into t0
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
     la $t5, game_array              # load array address into t5
     add $t9, $zero, $zero           # init loop counter = 0
     add $t8, $zero, $zero           # init offset counter = 0
     
     # loops through each address in the array 
     update_display_loop:
-        addi $t5, $t5, 4
         lw $t7, 0($t5)            # load val at game_array[offset/4] into t7 (a colour)
         
         bne $t7, 0, display_pixel     # if not zero, convert array_to_bitmap. otherwise, continue without doing anything
@@ -262,13 +292,18 @@ update_display:
         add $a1, $v1, $zero             # y arg for xy_to_bitmap
         jal xy_to_bitmap
         
+        lw $t0, ADDR_DSPL               # load the base bitmap address into t0
         add $t0, $t0, $v0
-        sw $t7, 0($t0)                # write value (t7, a colour) to bitmap with offset (v0)
+        sw $t7, 0($t0)                  # write value (t7, a colour) to bitmap with offset (v0)
         
         increment_display_loop_vars:
         addi $t9, $t9, 1                        # increase loop counter by 1
-        addi $t8, $t8, 4
+        addi $t8, $t8, 4                        # increase offset counter by 4
+        addi $t5, $t5, 4                        # increase array pointer by 4
         bne $t9, 127, update_display_loop       # loop 128 times
+        
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
     jr $ra
 # END OF UPDATE_DISPLAY
   
@@ -317,7 +352,7 @@ jr $ra
 # returns: v0 (the ASCII code for a letter - w, a, s, d, q, n)
 # registers: t7 (ASCII key value of key pressed), t8 (value at keyboard_address --> 0 or 1), t9 (keyboard_address)
 check_key_press:
-    lw $t9, ADDR_KBRD        # $t9 = base keyboard address
+    lw $t9, ADDR_KBRD               # $t9 = base keyboard address
     lw $t8, 0($t9)                  # $t8 = value at keyboard address
     beq $t8, 1, keyboard_input      # if $t8 == 1: key was pressed (ASCII key value found in next value in memory)
     
@@ -424,5 +459,94 @@ calculate_new_xy:
     exit_calculate_next_xy:
     jr $ra
 # END CALCULATE_NEXT_XY
+
+# START OF UPDATE_CAPSULE_LOCATION
+# function that stores the new capsule location (new_x, new_y) into their respective positions in the game_array and removes them from their previous location (curr_x, curr_y)
+# registers: t0 (game_array pointer), t1 (x), t2 (y), t5 (game array address), t9 (temp colour), a0 (arg x for xy_to_array), a1 (arg y for xy_to_array)
+update_capsule_location: 
+    la $t5, game_array
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+    # remove value at curr_x1 and curr_y1
+        add $t0, $t5, $zero     # t0 = game_array pointer
+        
+        lw $t1 curr_x1          # t1 = curr_x1
+        lw $t2 curr_y1          # t2 = curr_y1
+        
+        add $a0, $t1, $zero     # a0 = x arg for xy_to_array
+        add $a1, $t2, $zero     # a1 = y arg for xy_to_array
+        jal xy_to_array         
+        add $t0, $t0, $v0       # t0 = game_array pointer + offset
+        
+        lw $t9, black           # load the colour black into t9
+        sw $t9, 0($t0)          # set value at game_array[offset/4] to black (0)
+    
+    # set value at new_x1 and new_y1
+        add $t0, $t5, $zero     # t0 = game_array pointer
+        
+        lw $t1 new_x1          # t1 = new_x1
+        lw $t2 new_y1          # t2 = new_y1
+        
+        add $a0, $t1, $zero     # a0 = x arg for xy_to_array
+        add $a1, $t2, $zero     # a1 = y arg for xy_to_array
+        jal xy_to_array         
+        add $t0, $t0, $v0       # t0 = game_array pointer + offset
+        
+        lw $t9, colour_1        # load the first colour into t9
+        sw $t9, 0($t0)          # set value at game_array[offset/4] to colour_1
+    
+    # remove value at curr_x2 and curr_y2
+        add $t0, $t5, $zero     # t0 = game_array pointer
+        
+        lw $t1 curr_x2          # t1 = curr_x2
+        lw $t2 curr_y2          # t2 = curr_y2
+        
+        add $a0, $t1, $zero     # a0 = x arg for xy_to_array
+        add $a1, $t2, $zero     # a1 = y arg for xy_to_array
+        jal xy_to_array         
+        add $t0, $t0, $v0       # t0 = game_array pointer + offset
+        
+        lw $t9, black           # load the colour black into t9
+        sw $t9, 0($t0)          # set value at game_array[offset/4] to black (0)
+    
+    # set value at new_x2 and new_y2
+        add $t0, $t5, $zero     # t0 = game_array pointer
+        
+        lw $t1 new_x2          # t1 = new_x2
+        lw $t2 new_y2          # t2 = new_y2
+        
+        add $a0, $t1, $zero     # a0 = x arg for xy_to_array
+        add $a1, $t2, $zero     # a1 = y arg for xy_to_array
+        jal xy_to_array         
+        add $t0, $t0, $v0       # t0 = game_array pointer + offset
+        
+        lw $t9, colour_2        # load the first colour into t9
+        sw $t9, 0($t0)          # set value at game_array[offset/4] to colour_2
+        
+        lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+        addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+        jr $ra
+# END OF UPDATE_CAPSULE_LOCATION
+
+# START OF XY_TO_ARRAY
+# translates row/column value to game_array offset
+# inputs: a0 (x value - 0:127), a1 (y value - 0:127) 
+# returns: v0 (offset)
+# registers: t9 (temp left shift)
+xy_to_array:
+    # offset = 32y + 4x
+    add $v0, $zero, $zero       # init $v0 = offset = 0
+    
+    # 32 = 2^5 so 32y = shift 5 bits left
+    sll $t9, $a1, 5             # $t9 = 32y
+    add $v0, $v0, $t9           # $v0 = game_board_offset + 32y
+    
+    # 4 = 2^2 so 4x = shift 2 bits left
+    sll $t9, $a0, 2             # $t9 = 4x
+    add $v0, $v0, $t9           # $v0 = game_board_offset + 32y + 4x
+jr $ra
+# END OF ARRAY_TO_XY
 
 exit:
