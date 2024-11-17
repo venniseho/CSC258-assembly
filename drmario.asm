@@ -73,10 +73,31 @@ main:
 game_loop:
     # 1a. Check if key has been pressed & 1b. Check which key has been pressed
     jal check_key_press
-    # assign v0 to something
+    
+    add $a0, $v0, $zero             # output key from check_key_press is the input to calculate_next_xy
+    jal calculate_new_xy            # after this call, new_x and new_y will contain new positions
     
     # 2a. Check for collisions
+    
+    # if collision returns true (no collision) change curr_x to new_x and curr_y to new_y
+        la $t1, curr_x1         # t1 = curr_x1 address
+        lw $t2, new_x1          # t2 = new_x1
+        sw $t2, 0($t1)          # store new_x1 at curr_x1 address
+        
+        la $t1, curr_y1         # t1 = curr_y1 address
+        lw $t2, new_y1          # t2 = new_y1
+        sw $t2, 0($t1)          # store new_y1 at curr_y1 address
+        
+        la $t1, curr_x2         # t1 = curr_x2 address
+        lw $t2, new_x2          # t2 = new_x2
+        sw $t2, 0($t1)          # store new_x2 at curr_x2 address
+        
+        la $t1, curr_y2         # t1 = curr_y2 address
+        lw $t2, new_y2          # t2 = new_y2
+        sw $t2, 0($t1)          # store new_y2 at curr_y2 address
+        
 	# 2b. Update locations (capsules)
+	
 	# 3. Draw the screen
 	jal update_display
 	# 4. Sleep
@@ -336,7 +357,7 @@ check_key_press:
 # note: all x and y's are in relation to the GAME ARRAY setup; no return, this function mutates
 # inputs: a0 (the given key; it will be one of w, a, s, d, n)
 # registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address), t5 (curr_y1), t6 (curr_y2), t7 (new_y1 address), t8 (new_y2 address) 
-calculate_next_xy:
+calculate_new_xy:
     lw $t1, curr_x1             # t1 = curr_x1
     lw $t2, curr_x2             # t2 = curr_x2
     la $t3, new_x1              # t3 = new_x1 address
