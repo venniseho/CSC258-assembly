@@ -281,10 +281,10 @@ update_display:
     update_display_loop:
         lw $t7, 0($t5)            # load val at game_array[offset/4] into t7 (a colour)
         
-        bne $t7, 0, display_pixel     # if not zero, convert array_to_bitmap. otherwise, continue without doing anything
-        j increment_display_loop_vars
+        # bne $t7, 0, display_pixel     # if not zero, convert array_to_bitmap. otherwise, continue without doing anything
+        # j increment_display_loop_vars
         
-        display_pixel:
+        # display_pixel:
         add $a0, $t8, $zero             # array offset arg for array_to_xy
         jal array_to_xy
     
@@ -431,19 +431,41 @@ calculate_new_xy:
     # When w is pressed, rotate one unit clockwise 
     # registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address), t5 (curr_y1), t6 (curr_y2), t8 (new_y2 address)
     rotate_clockwise:
-        beq $t5, $t6, horizontal_to_vertical
+        beq $t5, $t6, horizontal_to_vertical        # if y1 == y2, then it is horizontal
         beq $t1, $t2, vertical_to_horizontal
         
         horizontal_to_vertical:
-            addi, $t6, $t6, 1           # curr_y2 + 1
-            sw $t8, 0($t6)              # store curr_y2 + 1 at new_y2 address
-            sw $t1, 0($t4)              # store curr_x1 at new_x2 address
+            blt $t1, $t2, rotate_down               # if x1 < x2, rotate x2, y2 down
+            blt $t2, $t1, rotate_up                 # if x2 < x1, rotate x2, y2 up
+            
+            rotate_down:
+                addi, $t6, $t6, 1           # curr_y2 + 1
+                j exit_horz_to_vert
+                
+            rotate_up:
+                addi, $t6, $t6, -1           # curr_y2 - 1
+                j exit_horz_to_vert
+            
+            exit_horz_to_vert:
+                sw $t6, 0($t8)              # store curr_y2 + 1 at new_y2 address
+                sw $t1, 0($t4)              # store curr_x1 at new_x2 address
         j exit_calculate_next_xy
         
         vertical_to_horizontal:
-            addi, $t2, $t2, -1          # curr_x2 - 1
-            sw $t4, 0($t2)              # store curr_x2 - 1 at new_x2 address
-            sw $t5, 0($t8)              # store curr_y1 at new_y2 address
+            blt $t5, $t6, rotate_180               # if y2 < y1, rotate x2, y2 180 degrees (from original position where pill 1 is on the left and pill 2 is on the right)
+            blt $t6, $t5, rotate_360                 # if y1 < y2, rotate x2, y2 360 degrees (from original position where pill 1 is on the left and pill 2 is on the right)
+            
+            rotate_180:
+                addi, $t2, $t2, -1          # curr_x2 - 1
+                j exit_vert_to_horz
+            
+            rotate_360:
+                addi, $t2, $t2, 1           # curr_x2 + 1
+                j exit_vert_to_horz
+            
+            exit_vert_to_horz:
+                sw $t2, 0($t4)              # store curr_x2 - 1 at new_x2 address
+                sw $t5, 0($t8)              # store curr_y1 at new_y2 address
         j exit_calculate_next_xy
     
     # When s is pressed, shift one unit down (only need y variables since it's a vertical shift)
