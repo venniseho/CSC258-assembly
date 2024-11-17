@@ -39,11 +39,13 @@ game_array:         .word 0:128
 check_key_press:
     lw $t9, keyboard_address        # $t9 = base keyboard address
     lw $t8, 0($t9)                  # $t8 = value at keyboard address
-    beq $t8, 1, keyboard_input      # if $t9 == 1: key was pressed (ASCII key value found in next value in memory)
+    beq $t8, 1, keyboard_input      # if $t8 == 1: key was pressed (ASCII key value found in next value in memory)
     
+    lw $v0, n                       # otherwise, no key was pressed so set return value (v0) = n 
+    j exit_check_key_press          # --> jump to exit
     
-# IF A KEY WAS PRESSED, GET ITS ASCII VALUE
-keyboard_input:
+    # if a key was pressed get its ASCII value
+    keyboard_input:
     lw $t7, 4($t9)                  # $t7 = ASCII key value 
     
     beq $t7, 0x61, valid_key        # a was pressed
@@ -52,13 +54,19 @@ keyboard_input:
     beq $t7, 0x73, valid_key        # s was pressed
     beq $t7, 0x71, respond_to_q     # q was pressed
     
-    lw $v0, n                       # if none of the valid keys (w, a, s, d, q) were pressed, return n (v0 = ASCII code of n)
-    jr $ra                          
+    lw $v0, n                       # otherwise, the key pressed was invalid so set return value (v0) = n   
+    j exit_check_key_press          # --> jump to exit
 
     valid_key:
     add $v0, $t7, $zero             # return the ASCII key value of the valid key
-    jr $ra
+    j exit_check_key_press          # --> jump to exit
     
     respond_to_q:
 	li $v0, 10                      # quit gracefully
 	syscall
+	
+	exit_check_key_press:
+	jr $ra                           # exit the function
+	
+
+
