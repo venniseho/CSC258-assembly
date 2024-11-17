@@ -57,16 +57,18 @@ check_key_press:
     lw $v0, n                       # otherwise, the key pressed was invalid so set return value (v0) = n   
     j exit_check_key_press          # --> jump to exit
 
-    valid_key:
-    add $v0, $t7, $zero             # return the ASCII key value of the valid key
-    j exit_check_key_press          # --> jump to exit
-    
-    respond_to_q:
-	li $v0, 10                      # quit gracefully
-	syscall
+        valid_key:
+        add $v0, $t7, $zero             # return the ASCII key value of the valid key
+        j exit_check_key_press          # --> jump to exit
+        
+        respond_to_q:
+    	li $v0, 10                      # quit gracefully
+    	syscall
 	
 	exit_check_key_press:
 	jr $ra                           # exit the function
+
+# END OF CHECK_KEY_PRESS
 	
 
 
