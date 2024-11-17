@@ -31,7 +31,7 @@ yellow:                 .word 0xffff00
 blue:                   .word 0x00ffff
 white:                  .word 0xffffff
 black:                  .word 0x000000
-left_init_position:     .word 2236
+game_board_offset:      .word 2224
 
 ##############################################################################
 # Mutable Data
@@ -58,6 +58,7 @@ game_loop:
     # 2a. Check for collisions
 	# 2b. Update locations (capsules)
 	# 3. Draw the screen
+	jal update_display
 	# 4. Sleep
 
     # 5. Go back to Step 1
@@ -149,17 +150,17 @@ draw_bottle:
 # registers: t0 (bitmap pointer), t1 (initial position of left half), t5 (game_array address), v0 (return val from generate_colour)
 generate_pill: 
     lw $t0, ADDR_DSPL           # load displayAddress into $t0 (= bitmap pointer)
-    lw $t1, left_init_position
-    add $t0, $t0, $t1           # point bitmap pointer to top of bottle
+    lw $t1, game_board_offset
+    add $t0, $t0, $t1           # point bitmap pointer to top-left corner of bottle
     
     la $t5, game_array          # t5 = address of game_array
     
     jal generate_colour         # generate the left half of the pill and init at top of bottle
-    sw $v0, 0($t0)              
+    sw $v0, 12($t0)             # add colour to the bitmap 
     sw $v0, 12($t5)             # add colour of left half of pill to game_array[3] 
     
     jal generate_colour         # generate the right half of the pill and init at top of bottle
-    sw $v0, 4($t0)
+    sw $v0, 16($t0)
     sw $v0, 16($t5)             # add colour of right half of pill to game_array[4]
     
 jr $ra
@@ -194,5 +195,78 @@ generate_colour:
     add $v0, $t9, $zero
     jr $ra
 # END GENERATE_COLOUR
+
+# START UPDATE_DISPLAY
+# function that updates the display based on the game_array
+# registers: t0 (bitmap pointer), t5 (array pointer), t7 (value at game_array[offset/4]), t8 (offset counter), t9 (loop counter)
+update_display:
+    lw $t0, ADDR_DSPL         # load the base bitmap address into t0
+    la $t5, game_array              # load array address into t5
+    add $t9, $zero, $zero           # init loop counter = 0
+    add $t8, $zero, $zero           # init offset counter = 0
+    
+    # loops through each address in the array 
+    update_display_loop:
+        addi $t5, $t5, 4
+        lw $t7, 0($t5)            # load val at game_array[offset/4] into t7 (a colour)
+        
+        bne $t7, 0, display_pixel     # if not zero, convert array_to_bitmap. otherwise, continue without doing anything
+        j increment_display_loop_vars
+        
+        display_pixel:
+        add $a0, $t8, $zero             # array offset arg for array_to_xy
+        jal array_to_xy
+    
+        add $a0, $v0, $zero             # x arg for xy_to_bitmap
+        add $a1, $v1, $zero             # y arg for xy_to_bitmap
+        jal xy_to_bitmap
+        
+        add $t0, $t0, $v0
+        sw $t7, 0($t0)                # write value (t7, a colour) to bitmap with offset (v0)
+        
+        increment_display_loop_vars:
+        addi $t9, $t9, 1                        # increase loop counter by 1
+        addi $t8, $t8, 4
+        bne $t9, 127, update_display_loop       # loop 128 times
+    jr $ra
+# END OF UPDATE_DISPLAY
+  
+# START OF ARRAY_TO_XY
+# helper function that translates address offset to row/column value
+# inputs: a0 (offset)
+# returns: v0 (x value - 0:127), v1 (y value - 0:127) 
+# registers: t1 (temp divisors), t2 (temp remainder of a0/32)
+array_to_xy:
+    # y = quotient of a0/32
+    addi $t1, $zero, 32     # init $t1 = 32
+    div $a0, $t1            # divide a0 by 32 
+    mflo $v1                # v1 = y = quotient of a0 / 32
+    
+    # x = (remainder of a0/32) / 4
+    mfhi $t2                # init $t2 = remainder of a0 / 32
+    addi $t1, $zero, 4      # reassign $t1 = 4
+    div $t2, $t1            # divide the remainder by 4
+    mflo $v0                # v0 = x = quotient of remainder / 4
+jr $ra
+# END OF ARRAY_TO_XY
+
+# START OF XY_TO_BITMAP
+# helper function that translates row/column value to bitmap offset
+# inputs: a0 (x value - 0:127), a1 (y value - 0:127) 
+# returns: v0 (bitmap offset)
+# registers: 
+xy_to_bitmap:
+    lw $t4, game_board_offset 
+    # 128 = 2^7 so 128y = shift left by 7 bits
+    sll $t3, $a1, 7             # $t3 = 128y
+    add $t4, $t4, $t3           # $t4 = game_board_offset + 128y
+    
+    # 4 = 2^2 so 4x = shift left by 2 bits
+    sll $t3, $a0, 2             # $t3 = 4x
+    add $t4, $t4, $t3           # $t4 = game_board_offset + 128y + 4x 
+    
+    add $v0, $t4, $zero         # v0 = bitmap offset
+jr $ra
+# END OF XY_TO_BITMAP
 
 exit:
