@@ -1,9 +1,8 @@
 ################# CSC258 Assembly Final Project ###################
 # This file contains our implementation of Dr Mario.
 #
-# Student 1: Name, Student Number
-# Student 2: Name, Student Number (if applicable)
-#+
+# Student 1: Vennise Ho 1009972923
+#
 # We assert that the code submitted here is entirely our own 
 # creation, and will indicate otherwise when it is not.
 #
@@ -52,14 +51,14 @@ game_array:             .word 0:128
 
 curr_x1:                .word 0             # current x of half 1
 curr_y1:                .word 0             # current y of half 1
-new_x1:                .word 0             # current x of half 1
-new_y1:                .word 0             # current y of half 1
+new_x1:                 .word 0             # current x of half 1
+new_y1:                 .word 0             # current y of half 1
 colour_1:               .word 0             # current colour of half 1
 
 curr_x2:                .word 0             # current x of half 2
 curr_y2:                .word 0             # current y of half 2
-new_x2:                .word 0             # current x of half 2
-new_y2:                .word 0             # current y of half 2
+new_x2:                 .word 0             # current x of half 2
+new_y2:                 .word 0             # current y of half 2
 colour_2:               .word 0             # current colour of half 2
 
 ##############################################################################
@@ -340,21 +339,40 @@ generate_virus:
 generate_pill: 
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
-        
+    
+    # checks if there is something blocking the entrance already
+    lw $t1, init_x1             # load initial x1 value into t1
+    lw $t2, init_y1             # load initial y1 value into t2    
+    la $t9, new_x1              # t6 = address of new_x1
+    la $t8, new_y1              # t5 = address of new_y1
+    sw $t1, 0($t9)              # store intial x1 value in new_x1
+    sw $t2, 0($t8)              # store intial y1 value in new_y1
+    
+    lw $t1, init_x2             # load initial x2 value into t1
+    lw $t2, init_y2             # load initial y2 value into t2
+    la $t9, new_x2              # t6 = address of new_x2
+    la $t8, new_y2              # t5 = address of new_y2
+    sw $t1, 0($t9)              # store intial x2 value in new_x2
+    sw $t2, 0($t8)              # store intial y2 value in new_y2
+    
+    jal check_object_collision
+    jal check_object_collision
+    beq $v0, 0, skip_game_over      # if there is no object at 
+    li $v0, 10                      # quit gracefully
+    syscall
+    
+    skip_game_over:
     la $t7, colour_1            # t7 = address of colour_1
     jal generate_colour         # generate the left half of the pill and init at top of bottle
     sw $v0, 0($t7)              # store generated colour in colour_1
     
     la $t9, curr_x1             # t9 = address of x1
     la $t8, curr_y1             # t8 = address of y1
-    la $t6, new_x1              # t6 = address of new_x1
-    la $t5, new_y1              # t5 = address of new_y1
     lw $t1, init_x1             # load initial x1 value into t1
     lw $t2, init_y1             # load initial y1 value into t2
     sw $t1, 0($t9)              # store intial x1 value in curr_x1
     sw $t2, 0($t8)              # store intial y1 value in curr_y1
-    sw $t1, 0($t6)              # store intial x1 value in new_x1
-    sw $t2, 0($t5)              # store intial y1 value in new_y1
+    
     
     la $t7, colour_2            # t7 = address of colour_1
     jal generate_colour         # generate the right half of the pill and init at top of bottle
@@ -362,14 +380,10 @@ generate_pill:
     
     la $t9, curr_x2             # t9 = address of x2
     la $t8, curr_y2             # t8 = address of y2
-    la $t6, new_x2              # t6 = address of new_x2
-    la $t5, new_y2              # t5 = address of new_y2
     lw $t1, init_x2             # load initial x2 value into t1
     lw $t2, init_y2             # load initial y2 value into t2
     sw $t1, 0($t9)              # store intial x2 value in curr_x2
     sw $t2, 0($t8)              # store intial y2 value in curr_y2
-    sw $t1, 0($t6)              # store intial x2 value in new_x2
-    sw $t2, 0($t5)              # store intial y2 value in new_y2
     
     lw $ra, 0($sp)           # Load the saved value of $ra from the stack
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
