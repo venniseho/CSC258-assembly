@@ -82,11 +82,6 @@ main:
     jal update_display              # draw the display
 
 game_loop:
-    jal check_bottom_collision          # checks if the pill hit the bottom of the walls
-    beq $v0, 0, skip_pill                # returns 1 if collision
-    jal generate_pill
-    
-    skip_pill:
     # 1A. CHECK IF KEY HAS BEEN PRESSED & 1B. CHECK WHICH KEY HAS BEEN PRESSED
     jal check_key_press
     
@@ -96,7 +91,7 @@ game_loop:
     
     # 2A. CHECK FOR COLLISIONS
     # remove the current values from the game_array
-    la $t5, game_array          # load the address of the game_array
+    lw $t6, black               # load the colour black
     # remove value of game_array[curr_x1, curr_y1] 
     lw $t7, curr_x1              # t1 = curr_x1
     lw $t8, curr_y1              # t2 = curr_y1
@@ -104,8 +99,7 @@ game_loop:
     add $a1, $t8, $zero          # arg y for xy_to_array
     jal xy_to_array
     add $t0, $t5, $v0           # points to game_array[curr_x1, curr_y1]
-    lw $t9, black               # load the colour black
-    sw $t9, 0($t0)              # put the colour black into game_array[curr_x1, curr_y1]
+    sw $t6, 0($t0)              # put the colour black into game_array[curr_x1, curr_y1]
     
     # remove value of game_array[curr_x2, curr_y2]
     lw $t7, curr_x2              # t1 = curr_x2
@@ -114,50 +108,48 @@ game_loop:
     add $a1, $t8, $zero          # arg y for xy_to_array
     jal xy_to_array
     add $t0, $t5, $v0           # points to game_array[curr_x2, curr_y2]
-    lw $t9, black               # load the colour black
-    sw $t9, 0($t0)              # put the colour black into game_array[curr_x2, curr_y2]
+    sw $t6, 0($t0)              # put the colour black into game_array[curr_x2, curr_y2]
     
     beq $s0, 0x61, check_side_collision                         # the given key is a
-    beq $s0, 0x64, check_side_collision                         # the given key is d
-    beq $s0, 0x77, check_side_collision                         # the given key is w
-    beq $s0, 0x73, check_down_collision                         # the given key is s
-    j location
+    beq $a0, 0x64, check_side_collision                         # the given key is d
+    beq $a0, 0x77, check_side_collision                         # the given key is w
+    beq $a0, 0x73, check_down_collision                         # the given key is s
     
     check_side_collision:
-    jal check_wall_collision            # checks if the pill hit the side or top walls
-    beq $v0, 1, location                # returns 1 if collision
-    
-    # otherwise, the pill did not hit a wall
-    jal check_object_collision          # checks if the pill hit an object
-    beq $v0, 1, location                # returns 1 if collision
-    
-    # otherwise, we can move the pill to the new position
-    # update curr_x, curr_y = new_x, new_y
-    la $t1, curr_x1         # t1 = curr_x1 address
-    lw $t2, new_x1          # t2 = new_x1
-    sw $t2, 0($t1)          # store new_x1 at curr_x1 address
-    
-    la $t1, curr_y1         # t1 = curr_y1 address
-    lw $t2, new_y1          # t2 = new_y1
-    sw $t2, 0($t1)          # store new_y1 at curr_y1 address
-    
-    la $t1, curr_x2         # t1 = curr_x2 address
-    lw $t2, new_x2          # t2 = new_x2
-    sw $t2, 0($t1)          # store new_x2 at curr_x2 address
-    
-    la $t1, curr_y2         # t1 = curr_y2 address
-    lw $t2, new_y2          # t2 = new_y2
-    sw $t2, 0($t1)          # store new_y2 at curr_y2 address
+        jal check_wall_collision            # checks if the pill hit the side or top walls
+        beq $v0, 1, location                # returns 1 if collision
+        
+        # otherwise, the pill did not hit a wall
+        jal check_object_collision          # checks if the pill hit an object
+        beq $v0, 1, location                # returns 1 if collision
+        
+        # otherwise, we can move the pill to the new position
+        # update curr_x, curr_y = new_x, new_y
+        la $t1, curr_x1         # t1 = curr_x1 address
+        lw $t2, new_x1          # t2 = new_x1
+        sw $t2, 0($t1)          # store new_x1 at curr_x1 address
+        
+        la $t1, curr_y1         # t1 = curr_y1 address
+        lw $t2, new_y1          # t2 = new_y1
+        sw $t2, 0($t1)          # store new_y1 at curr_y1 address
+        
+        la $t1, curr_x2         # t1 = curr_x2 address
+        lw $t2, new_x2          # t2 = new_x2
+        sw $t2, 0($t1)          # store new_x2 at curr_x2 address
+        
+        la $t1, curr_y2         # t1 = curr_y2 address
+        lw $t2, new_y2          # t2 = new_y2
+        sw $t2, 0($t1)          # store new_y2 at curr_y2 address
     
     j location
     
     check_down_collision:
-    # jal check_bottom_collision          # checks if the pill hit the bottom of the walls
-    # beq $v0, 1, down_collision_true                # returns 1 if collision
+    jal check_bottom_collision          # checks if the pill hit the bottom of the walls
+    beq $v0, 1, location                # returns 1 if collision
     
     # otherwise, the pill did not hit a wall
     jal check_object_collision          # checks if the pill hit an object
-    beq $v0, 1, down_collision_true                # returns 1 if collision
+    beq $v0, 1, location                # returns 1 if collision
     
     # otherwise, we can move the pill to the new position
     # update curr_x, curr_y = new_x, new_y
@@ -178,12 +170,6 @@ game_loop:
     sw $t2, 0($t1)          # store new_y2 at curr_y2 address
 
     j location
-    
-    down_collision_true:
-    jal update_capsule_location
-    
-    jal generate_pill
-    j location 
         
 	# 2B. UPDATE LOCATION (CAPSULES)
 	location:
@@ -629,11 +615,25 @@ update_capsule_location:
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
     
+    # # remove value at curr_x1 and curr_y1
+        # add $t0, $t5, $zero     # t0 = game_array pointer
+        
+        # lw $t1 curr_x1          # t1 = curr_x1
+        # lw $t2 curr_y1          # t2 = curr_y1
+        
+        # add $a0, $t1, $zero     # a0 = x arg for xy_to_array
+        # add $a1, $t2, $zero     # a1 = y arg for xy_to_array
+        # jal xy_to_array         
+        # add $t0, $t0, $v0       # t0 = game_array pointer + offset
+        
+        # lw $t9, black           # load the colour black into t9
+        # sw $t9, 0($t0)          # set value at game_array[offset/4] to black (0)
+    
     # set value at new_x1 and new_y1
         add $t0, $t5, $zero     # t0 = game_array pointer
         
-        lw $t1 curr_x1          # t1 = new_x1
-        lw $t2 curr_y1          # t2 = new_y1
+        lw $t1 new_x1          # t1 = new_x1
+        lw $t2 new_y1          # t2 = new_y1
         
         add $a0, $t1, $zero     # a0 = x arg for xy_to_array
         add $a1, $t2, $zero     # a1 = y arg for xy_to_array
@@ -643,11 +643,25 @@ update_capsule_location:
         lw $t9, colour_1        # load the first colour into t9
         sw $t9, 0($t0)          # set value at game_array[offset/4] to colour_1
     
+    # # remove value at curr_x2 and curr_y2
+        # add $t0, $t5, $zero     # t0 = game_array pointer
+        
+        # lw $t1 curr_x2          # t1 = curr_x2
+        # lw $t2 curr_y2          # t2 = curr_y2
+        
+        # add $a0, $t1, $zero     # a0 = x arg for xy_to_array
+        # add $a1, $t2, $zero     # a1 = y arg for xy_to_array
+        # jal xy_to_array         
+        # add $t0, $t0, $v0       # t0 = game_array pointer + offset
+        
+        # lw $t9, black           # load the colour black into t9
+        # sw $t9, 0($t0)          # set value at game_array[offset/4] to black (0)
+    
     # set value at new_x2 and new_y2
         add $t0, $t5, $zero     # t0 = game_array pointer
         
-        lw $t1 curr_x2          # t1 = new_x2
-        lw $t2 curr_y2          # t2 = new_y2
+        lw $t1 new_x2          # t1 = new_x2
+        lw $t2 new_y2          # t2 = new_y2
         
         add $a0, $t1, $zero     # a0 = x arg for xy_to_array
         add $a1, $t2, $zero     # a1 = y arg for xy_to_array
@@ -697,7 +711,7 @@ check_wall_collision:
     # check the collision with the walls 
     # new_x1 < 0 (left side of board)
     bltz $t1, wall_collision_true               # if x1 < 0, the pill hit the left side
-    bltz $t3,  wall_collision_true               # if x2 < 0, the pill hit the left side
+    bltz $t3,  wall_collision_true               # if x2 >= 16, the pill hit the left side
         
     # new_x1 >= 8 (right side of board)
     bge $t1, 8, wall_collision_true             # if x1 >= 8, the pill hit the right side
@@ -771,22 +785,22 @@ check_object_collision:
 
 # START CHECK_BOTTOM_COLLISION
 # returns: v0 (boolean; 0 if there is no collision, 1 if there is a collision) 
-# registers: t1 (curr_x1), t2 (curr_y1), t3 (curr_x2), t4 (curr_y2)
+# registers: t1 (new_x1), t2 new_y1), t3 (new_x2), t4 (new_y2)
 check_bottom_collision:
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
     
     # assign t1-t4 to new_x, new_y data
-    lw $t1, curr_x1              # t1 = curr_x1
-    lw $t2, curr_y1              # t2 = curr_y1
-    lw $t3, curr_x2              # t3 = curr_x2
-    lw $t4, curr_y2              # t4 = curr_y2
+    lw $t1, new_x1              # t1 = new_x1
+    lw $t2, new_y1              # t2 = new_y1
+    lw $t3, new_x2              # t3 = new_x2
+    lw $t4, new_y2              # t4 = new_y2
     
-    # new_y1 >= 15 (height of game_array)
-    bge $t2, 15, bottom_collision_true          # if y1 >= 16, the pill hit the bottom
+    # new_y1 >= 16 (height of game_array)
+    bge $t2, 16, bottom_collision_true          # if y1 >= 16, the pill hit the bottom
     
-    # new_y2 >= 15 (height of game_array)
-    bge $t4, 15, bottom_collision_true          # if y2 >= 16, the pill hit the bottom
+    # new_y2 >= 16 (height of game_array)
+    bge $t4, 16, bottom_collision_true          # if y2 >= 16, the pill hit the bottom
     
     # Otherwise, we know there are no collisions so set return value = 0
     add $v0, $zero, $zero
