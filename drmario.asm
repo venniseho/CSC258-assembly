@@ -82,18 +82,49 @@ main:
     jal update_display              # draw the display
 
 game_loop:
-    # 1a. Check if key has been pressed & 1b. Check which key has been pressed
+    # 1A. CHECK IF KEY HAS BEEN PRESSED & 1B. CHECK WHICH KEY HAS BEEN PRESSED
     jal check_key_press
     
-    add $a0, $v0, $zero             # output key from check_key_press is the input to calculate_next_xy
+    add $s0, $v0, $zero             # s0 = keypress (constant for the loop)
+    add $a0, $s0, $zero             # output key from check_key_press is the input to calculate_next_xy
     jal calculate_new_xy            # after this call, new_x and new_y will contain new positions
     
-    # 2a. Check for collisions
+    # 2A. CHECK FOR COLLISIONS
+    # remove the current values from the game_array
+    lw $t6, black               # load the colour black
+    # remove value of game_array[curr_x1, curr_y1] 
+    lw $t7, curr_x1              # t1 = curr_x1
+    lw $t8, curr_y1              # t2 = curr_y1
+    add $a0, $t7, $zero          # arg x for xy_to_array
+    add $a1, $t8, $zero          # arg y for xy_to_array
+    jal xy_to_array
+    add $t0, $t5, $v0           # points to game_array[curr_x1, curr_y1]
+    sw $t6, 0($t0)              # put the colour black into game_array[curr_x1, curr_y1]
+    
+    # remove value of game_array[curr_x2, curr_y2]
+    lw $t7, curr_x2              # t1 = curr_x2
+    lw $t8, curr_y2              # t2 = curr_y2
+    add $a0, $t7, $zero          # arg x for xy_to_array
+    add $a1, $t8, $zero          # arg y for xy_to_array
+    jal xy_to_array
+    add $t0, $t5, $v0           # points to game_array[curr_x2, curr_y2]
+    sw $t6, 0($t0)              # put the colour black into game_array[curr_x2, curr_y2]
+    
+    beq $s0, 0x61, check_side_collision                         # the given key is a
+    beq $a0, 0x64, check_side_collision                         # the given key is d
+    beq $a0, 0x77, check_side_collision                         # the given key is w
+    beq $a0, 0x73, check_down_collision                         # the given key is s
+    
+    check_side_collision:
+        jal check_wall_collision            # checks if the pill hit the side or top walls
+        beq $v0, 1, location                # returns 1 if collision
         
-	# 2b. Update locations (capsules)
-	jal update_capsule_location             # after this call, the game_array locations should be updated
-	
-	# if collision returns true (no collision) change curr_x to new_x and curr_y to new_y
+        # otherwise, the pill did not hit a wall
+        jal check_object_collision          # checks if the pill hit an object
+        beq $v0, 1, location                # returns 1 if collision
+        
+        # otherwise, we can move the pill to the new position
+        # update curr_x, curr_y = new_x, new_y
         la $t1, curr_x1         # t1 = curr_x1 address
         lw $t2, new_x1          # t2 = new_x1
         sw $t2, 0($t1)          # store new_x1 at curr_x1 address
@@ -109,6 +140,40 @@ game_loop:
         la $t1, curr_y2         # t1 = curr_y2 address
         lw $t2, new_y2          # t2 = new_y2
         sw $t2, 0($t1)          # store new_y2 at curr_y2 address
+    
+    j location
+    
+    check_down_collision:
+    jal check_bottom_collision          # checks if the pill hit the bottom of the walls
+    beq $v0, 1, location                # returns 1 if collision
+    
+    # otherwise, the pill did not hit a wall
+    jal check_object_collision          # checks if the pill hit an object
+    beq $v0, 1, location                # returns 1 if collision
+    
+    # otherwise, we can move the pill to the new position
+    # update curr_x, curr_y = new_x, new_y
+    la $t1, curr_x1         # t1 = curr_x1 address
+    lw $t2, new_x1          # t2 = new_x1
+    sw $t2, 0($t1)          # store new_x1 at curr_x1 address
+    
+    la $t1, curr_y1         # t1 = curr_y1 address
+    lw $t2, new_y1          # t2 = new_y1
+    sw $t2, 0($t1)          # store new_y1 at curr_y1 address
+    
+    la $t1, curr_x2         # t1 = curr_x2 address
+    lw $t2, new_x2          # t2 = new_x2
+    sw $t2, 0($t1)          # store new_x2 at curr_x2 address
+    
+    la $t1, curr_y2         # t1 = curr_y2 address
+    lw $t2, new_y2          # t2 = new_y2
+    sw $t2, 0($t1)          # store new_y2 at curr_y2 address
+
+    j location
+        
+	# 2B. UPDATE LOCATION (CAPSULES)
+	location:
+	jal update_capsule_location             # after this call, the game_array locations should be updated
 	
 	# 3. Draw the screen
 	jal update_display
@@ -550,19 +615,19 @@ update_capsule_location:
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
     
-    # remove value at curr_x1 and curr_y1
-        add $t0, $t5, $zero     # t0 = game_array pointer
+    # # remove value at curr_x1 and curr_y1
+        # add $t0, $t5, $zero     # t0 = game_array pointer
         
-        lw $t1 curr_x1          # t1 = curr_x1
-        lw $t2 curr_y1          # t2 = curr_y1
+        # lw $t1 curr_x1          # t1 = curr_x1
+        # lw $t2 curr_y1          # t2 = curr_y1
         
-        add $a0, $t1, $zero     # a0 = x arg for xy_to_array
-        add $a1, $t2, $zero     # a1 = y arg for xy_to_array
-        jal xy_to_array         
-        add $t0, $t0, $v0       # t0 = game_array pointer + offset
+        # add $a0, $t1, $zero     # a0 = x arg for xy_to_array
+        # add $a1, $t2, $zero     # a1 = y arg for xy_to_array
+        # jal xy_to_array         
+        # add $t0, $t0, $v0       # t0 = game_array pointer + offset
         
-        lw $t9, black           # load the colour black into t9
-        sw $t9, 0($t0)          # set value at game_array[offset/4] to black (0)
+        # lw $t9, black           # load the colour black into t9
+        # sw $t9, 0($t0)          # set value at game_array[offset/4] to black (0)
     
     # set value at new_x1 and new_y1
         add $t0, $t5, $zero     # t0 = game_array pointer
@@ -578,19 +643,19 @@ update_capsule_location:
         lw $t9, colour_1        # load the first colour into t9
         sw $t9, 0($t0)          # set value at game_array[offset/4] to colour_1
     
-    # remove value at curr_x2 and curr_y2
-        add $t0, $t5, $zero     # t0 = game_array pointer
+    # # remove value at curr_x2 and curr_y2
+        # add $t0, $t5, $zero     # t0 = game_array pointer
         
-        lw $t1 curr_x2          # t1 = curr_x2
-        lw $t2 curr_y2          # t2 = curr_y2
+        # lw $t1 curr_x2          # t1 = curr_x2
+        # lw $t2 curr_y2          # t2 = curr_y2
         
-        add $a0, $t1, $zero     # a0 = x arg for xy_to_array
-        add $a1, $t2, $zero     # a1 = y arg for xy_to_array
-        jal xy_to_array         
-        add $t0, $t0, $v0       # t0 = game_array pointer + offset
+        # add $a0, $t1, $zero     # a0 = x arg for xy_to_array
+        # add $a1, $t2, $zero     # a1 = y arg for xy_to_array
+        # jal xy_to_array         
+        # add $t0, $t0, $v0       # t0 = game_array pointer + offset
         
-        lw $t9, black           # load the colour black into t9
-        sw $t9, 0($t0)          # set value at game_array[offset/4] to black (0)
+        # lw $t9, black           # load the colour black into t9
+        # sw $t9, 0($t0)          # set value at game_array[offset/4] to black (0)
     
     # set value at new_x2 and new_y2
         add $t0, $t5, $zero     # t0 = game_array pointer
@@ -629,5 +694,126 @@ xy_to_array:
     add $v0, $v0, $t9           # $v0 = game_board_offset + 32y + 4x
 jr $ra
 # END OF ARRAY_TO_XY
+
+# START CHECK_WALL_COLLISION
+# returns: v0 (boolean; 0 if there is no collision, 1 if there is a collision) 
+# registers: t1 (new_x1), t2 new_y1), t3 (new_x2), t4 (new_y2)
+check_wall_collision:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+    # assign t1-t4 to new_x, new_y data
+    lw $t1, new_x1              # t1 = new_x1
+    lw $t2, new_y1              # t2 = new_y1
+    lw $t3, new_x2              # t3 = new_x2
+    lw $t4, new_y2              # t4 = new_y2
+    
+    # check the collision with the walls 
+    # new_x1 < 0 (left side of board)
+    bltz $t1, wall_collision_true               # if x1 < 0, the pill hit the left side
+    bltz $t3,  wall_collision_true               # if x2 >= 16, the pill hit the left side
+        
+    # new_x1 >= 8 (right side of board)
+    bge $t1, 8, wall_collision_true             # if x1 >= 8, the pill hit the right side
+    bge $t3, 8, wall_collision_true             # if x2 >= 8, the pill hit the right side
+        
+    # new_y1 < 0 (top of board)
+    bltz $t2, wall_collision_true               # if y1 < 0, the pill hit the top
+    bltz $t4, wall_collision_true               # if y2 < 0, the pill hit the top
+        
+    # Otherwise, we know there are no collisions so set return value = 0
+    add $v0, $zero, $zero
+    j exit_check_wall_collision                      # return = 0 (no collision)
+        
+    wall_collision_true:
+    addi $v0, $zero, 1                          # return = 1 (collision)
+            
+    exit_check_wall_collision:
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    jr $ra
+# END WALL_CHECK_COLLISION
+
+
+# START CHECK_OBJECT_COLLISION
+# assumes that there is no wall collision (within walls)
+# input: a0 (new_x), a1 (new_y)
+# returns: v0 (boolean; 0 if there is no collision, 1 if there is a collision) 
+# registers: t0 (game_array pointer), t1 (new_x1), t2 new_y1), t3 (new_x2), t4 (new_y2), t5 (game_array base address), t9 (value at game_array[x, y])
+check_object_collision:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+    la $t5, game_array          # load game_array base address
+    
+    # assign t1-t4 to new_x, new_y data
+    lw $t1, new_x1              # t1 = new_x1
+    lw $t2, new_y1              # t2 = new_y1
+    lw $t3, new_x2              # t3 = new_x2
+    lw $t4, new_y2              # t4 = new_y2
+    
+    # game_array[new_x1, new_y1] is not empty
+    add $a0, $t1, $zero                         # arg new_x1 for xy_to_array
+    add $a1, $t2, $zero                         # arg new_y1 for xy_to_array
+    jal xy_to_array             
+    add $t0, $t5, $v0                           # t0 = game_array base address + offset (pointer)
+    lw $t9, 0($t0)                              # load value at game_array[new_x1, new_y1]
+    bne $t9, $zero, object_collision_true       # if there is value that is not 0 (black), jump to return true
+    
+    # game_array[new_x2, new_y2] is not empty
+    add $a0, $t3, $zero                         # arg new_x1 for xy_to_array
+    add $a1, $t4, $zero                         # arg new_y1 for xy_to_array
+    jal xy_to_array             
+    add $t0, $t5, $v0                           # t0 = game_array base address + offset (pointer)
+    lw $t9, 0($t0)                              # load value at game_array[new_x1, new_y1]
+    bne $t9, $zero, object_collision_true       # if there is value that is not 0 (black), jump to return true
+    
+    # Otherwise, we know there are no collisions so set return value = 0
+    add $v0, $zero, $zero                       # return = 0 (no collision)
+    j exit_check_object_collision                      
+    
+    object_collision_true:
+    addi $v0, $zero, 1                          # return = 1 (collision)
+            
+    exit_check_object_collision:
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    jr $ra
+# END CHECK_OBJECT_COLLISION
+
+# START CHECK_BOTTOM_COLLISION
+# returns: v0 (boolean; 0 if there is no collision, 1 if there is a collision) 
+# registers: t1 (new_x1), t2 new_y1), t3 (new_x2), t4 (new_y2)
+check_bottom_collision:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+    # assign t1-t4 to new_x, new_y data
+    lw $t1, new_x1              # t1 = new_x1
+    lw $t2, new_y1              # t2 = new_y1
+    lw $t3, new_x2              # t3 = new_x2
+    lw $t4, new_y2              # t4 = new_y2
+    
+    # new_y1 >= 16 (height of game_array)
+    bge $t2, 16, bottom_collision_true          # if y1 >= 16, the pill hit the bottom
+    
+    # new_y2 >= 16 (height of game_array)
+    bge $t4, 16, bottom_collision_true          # if y2 >= 16, the pill hit the bottom
+    
+    # Otherwise, we know there are no collisions so set return value = 0
+    add $v0, $zero, $zero
+    j exit_check_bottom_collision                      # return = 0 (no collision)
+        
+    bottom_collision_true:
+    addi $v0, $zero, 1                          # return = 1 (collision)
+            
+    exit_check_bottom_collision:
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    jr $ra
+# END CHECK_BOTTOM_COLLISION
 
 exit:
