@@ -47,7 +47,7 @@ game_board_offset:     .word 1968
 ##############################################################################
 # Mutable Data
 ##############################################################################
-game_array:             .word 0:128
+game_array:             .word 0:128         # array containing the game
 
 curr_x1:                .word 0             # current x of half 1
 curr_y1:                .word 0             # current y of half 1
@@ -60,6 +60,8 @@ curr_y2:                .word 0             # current y of half 2
 new_x2:                 .word 0             # current x of half 2
 new_y2:                 .word 0             # current y of half 2
 colour_2:               .word 0             # current colour of half 2
+
+viruses:                .word 0:8           # array containing virus addresses
 
 ##############################################################################
 # Code
@@ -553,6 +555,12 @@ calculate_new_xy:
     lw $t6, curr_y2             # t6 = curr_y2
     la $t7, new_y1              # t7 = new_y1 address
     la $t8, new_y2              # t8 = new_y2 address
+    
+    # to ensure proper calculations, set new_x, new_y as curr_x, curr_y 
+    sw $t1, 0($t3)              # set new_x1 = curr_x1
+    sw $t2, 0($t4)              # set new_x2 = curr_x2
+    sw $t5, 0($t7)              # set new_y1 = curr_y1
+    sw $t6, 0($t8)              # set new_y2 = curr_y2
 
     beq $a0, 0x61, shift_left                         # the given key is a
     beq $a0, 0x64, shift_right                        # the given key is d
@@ -646,8 +654,8 @@ update_capsule_location:
     # set value at new_x1 and new_y1
         add $t0, $t5, $zero     # t0 = game_array pointer
         
-        lw $t1 curr_x1          # t1 = new_x1
-        lw $t2 curr_y1          # t2 = new_y1
+        lw $t1 curr_x1          # t1 = curr_x1
+        lw $t2 curr_y1          # t2 = curr_y1
         
         add $a0, $t1, $zero     # a0 = x arg for xy_to_array
         add $a1, $t2, $zero     # a1 = y arg for xy_to_array
