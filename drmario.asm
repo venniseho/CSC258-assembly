@@ -294,8 +294,25 @@ generate_virus:
         la $t5, game_array          # load the base address of the game_array
         
         jal generate_colour         # generate the colour of the virus
-        add $t3, $v0, $zero         # store generated colour in t3
+        add $t3, $v0, $zero            # store generated colour + offset in t3
         
+        beq $t3, 0xff0000, change_red         # If random number is 0, use red
+        beq $t3, 0xffff00, change_yellow      # If random number is 1, use yellow
+        beq $t3, 0x00ffff, change_blue        # If random number is 2, use blue
+        
+        change_red:
+        addi $t3, $zero, 0xfe0000
+        j generate_virus_xy
+        
+        change_yellow:
+        addi $t3, $zero, 0xfffe00
+        j generate_virus_xy
+        
+        change_blue:
+        addi $t3, $zero, 0x00fffe
+        j generate_virus_xy
+        
+        generate_virus_xy:
         # Generate x value (random number between 0 and 8 (exc.)) 
         li $v0, 42                  # Syscall for random number (min = a0, max = a1)
         li $a0, 0
@@ -566,7 +583,7 @@ calculate_new_xy:
     beq $a0, 0x64, shift_right                        # the given key is d
     beq $a0, 0x77, rotate_clockwise                   # the given key is w
     beq $a0, 0x73, shift_down                         # the given key is s
-    beq $a0, 0x6e, exit_calculate_next_xy             # the given key is n
+    beq $a0, 0x6e, exit_calculate_new_xy             # the given key is n
 
     # When a is pressed, shift one unit left (only need x variables since it's a horizontal shift)
     # registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address)
@@ -576,7 +593,7 @@ calculate_new_xy:
         
         sw $t1, 0($t3)              # store curr_x1 - 1 at new_x1 address
         sw $t2, 0($t4)              # store curr_x2 - 1 at new_x2 address
-    j exit_calculate_next_xy
+    j exit_calculate_new_xy
     
     # When d is pressed, shift one unit right (only need x variables since it's a horizontal shift)
     # registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address)
@@ -586,7 +603,7 @@ calculate_new_xy:
         
         sw $t1, 0($t3)              # store curr_x1 + 1 at new_x1 address
         sw $t2, 0($t4)              # store curr_x2 + 1 at new_x2 address
-    j exit_calculate_next_xy
+    j exit_calculate_new_xy
     
     # When w is pressed, rotate one unit clockwise 
     # registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address), t5 (curr_y1), t6 (curr_y2), t8 (new_y2 address)
@@ -609,7 +626,7 @@ calculate_new_xy:
             exit_horz_to_vert:
                 sw $t6, 0($t8)              # store curr_y2 + 1 at new_y2 address
                 sw $t1, 0($t4)              # store curr_x1 at new_x2 address
-        j exit_calculate_next_xy
+        j exit_calculate_new_xy
         
         vertical_to_horizontal:
             blt $t5, $t6, rotate_180               # if y2 < y1, rotate x2, y2 180 degrees (from original position where pill 1 is on the left and pill 2 is on the right)
@@ -626,7 +643,7 @@ calculate_new_xy:
             exit_vert_to_horz:
                 sw $t2, 0($t4)              # store curr_x2 - 1 at new_x2 address
                 sw $t5, 0($t8)              # store curr_y1 at new_y2 address
-        j exit_calculate_next_xy
+        j exit_calculate_new_xy
     
     # When s is pressed, shift one unit down (only need y variables since it's a vertical shift)
     # registers: t5 (curr_y1), t6 (curr_y2), t7 (new_y1 address), t8 (new_y2 address)
@@ -636,9 +653,9 @@ calculate_new_xy:
         
         sw $t5, 0($t7)              # store curr_y1 + 1 at new_y1 address
         sw $t6, 0($t8)              # store curr_y2 + 1 at new_y2 address
-    j exit_calculate_next_xy
+    j exit_calculate_new_xy
        
-    exit_calculate_next_xy:
+    exit_calculate_new_xy:
     jr $ra
 # END CALCULATE_NEXT_XY
 
