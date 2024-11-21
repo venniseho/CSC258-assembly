@@ -182,6 +182,7 @@ game_loop:
     
     down_collision_true:
     jal update_capsule_location
+    jal merge_row
     
     jal generate_pill
     j location 
@@ -189,6 +190,7 @@ game_loop:
 	# 2B. UPDATE LOCATION (CAPSULES)
 	location:
 	jal update_capsule_location             # after this call, the game_array locations should be updated
+	jal merge_row
 	
 	# 3. Draw the screen
 	jal update_display
@@ -294,25 +296,8 @@ generate_virus:
         la $t5, game_array          # load the base address of the game_array
         
         jal generate_colour         # generate the colour of the virus
-        add $t3, $v0, $zero            # store generated colour + offset in t3
+        add $t3, $v0, $zero         # store generated colour in t3
         
-        beq $t3, 0xff0000, change_red         # If random number is 0, use red
-        beq $t3, 0xffff00, change_yellow      # If random number is 1, use yellow
-        beq $t3, 0x00ffff, change_blue        # If random number is 2, use blue
-        
-        change_red:
-        addi $t3, $zero, 0xfe0000
-        j generate_virus_xy
-        
-        change_yellow:
-        addi $t3, $zero, 0xfffe00
-        j generate_virus_xy
-        
-        change_blue:
-        addi $t3, $zero, 0x00fffe
-        j generate_virus_xy
-        
-        generate_virus_xy:
         # Generate x value (random number between 0 and 8 (exc.)) 
         li $v0, 42                  # Syscall for random number (min = a0, max = a1)
         li $a0, 0
@@ -583,7 +568,7 @@ calculate_new_xy:
     beq $a0, 0x64, shift_right                        # the given key is d
     beq $a0, 0x77, rotate_clockwise                   # the given key is w
     beq $a0, 0x73, shift_down                         # the given key is s
-    beq $a0, 0x6e, exit_calculate_new_xy             # the given key is n
+    beq $a0, 0x6e, exit_calculate_next_xy             # the given key is n
 
     # When a is pressed, shift one unit left (only need x variables since it's a horizontal shift)
     # registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address)
@@ -593,7 +578,7 @@ calculate_new_xy:
         
         sw $t1, 0($t3)              # store curr_x1 - 1 at new_x1 address
         sw $t2, 0($t4)              # store curr_x2 - 1 at new_x2 address
-    j exit_calculate_new_xy
+    j exit_calculate_next_xy
     
     # When d is pressed, shift one unit right (only need x variables since it's a horizontal shift)
     # registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address)
@@ -603,7 +588,7 @@ calculate_new_xy:
         
         sw $t1, 0($t3)              # store curr_x1 + 1 at new_x1 address
         sw $t2, 0($t4)              # store curr_x2 + 1 at new_x2 address
-    j exit_calculate_new_xy
+    j exit_calculate_next_xy
     
     # When w is pressed, rotate one unit clockwise 
     # registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address), t5 (curr_y1), t6 (curr_y2), t8 (new_y2 address)
@@ -626,7 +611,7 @@ calculate_new_xy:
             exit_horz_to_vert:
                 sw $t6, 0($t8)              # store curr_y2 + 1 at new_y2 address
                 sw $t1, 0($t4)              # store curr_x1 at new_x2 address
-        j exit_calculate_new_xy
+        j exit_calculate_next_xy
         
         vertical_to_horizontal:
             blt $t5, $t6, rotate_180               # if y2 < y1, rotate x2, y2 180 degrees (from original position where pill 1 is on the left and pill 2 is on the right)
@@ -643,7 +628,7 @@ calculate_new_xy:
             exit_vert_to_horz:
                 sw $t2, 0($t4)              # store curr_x2 - 1 at new_x2 address
                 sw $t5, 0($t8)              # store curr_y1 at new_y2 address
-        j exit_calculate_new_xy
+        j exit_calculate_next_xy
     
     # When s is pressed, shift one unit down (only need y variables since it's a vertical shift)
     # registers: t5 (curr_y1), t6 (curr_y2), t7 (new_y1 address), t8 (new_y2 address)
@@ -653,9 +638,9 @@ calculate_new_xy:
         
         sw $t5, 0($t7)              # store curr_y1 + 1 at new_y1 address
         sw $t6, 0($t8)              # store curr_y2 + 1 at new_y2 address
-    j exit_calculate_new_xy
+    j exit_calculate_next_xy
        
-    exit_calculate_new_xy:
+    exit_calculate_next_xy:
     jr $ra
 # END CALCULATE_NEXT_XY
 
@@ -840,5 +825,128 @@ check_bottom_collision:
     
     jr $ra
 # END CHECK_BOTTOM_COLLISION
+
+# START OF MERGE_ROW
+# returns: v0 (game_array offset of the start of 4 same colours in a row or 0 if there are none)
+# registers: t0 (game_array pointer), t3 (y/row count), t4 (loop unit count), t6 (max units in a row count; from call the check_merge_row), 
+#            t5 (game_array address), t9 (the colour black)
+merge_row:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+    lw $t9, black
+    
+    # loop that checks each row to see if we there are at least 4 in a row, and merges if so. (starts from bottom)
+    addi $t3, $zero, 15         # initialise the row count (starts from bottom, last row = 15)
+    
+    merge_row_loop:
+        # call to check_merge_row of the current row to find out if a merge is needed. 
+        add $a0, $t3, $zero                     # arg to check_merge_row; current y/row value
+        jal check_merge_row
+        
+        add $t0, $t5, $v0                       # set the game_array pointer to the base address + returned offset of the last of the same colour units (-1 = no units to merge)
+        add $t6, $zero, $v1                     # t6 = v1 = the number of units to merge (0 or a value >=4) 
+        
+        beq $t6, $zero, decrement_merge_row_loop        # if the number of units to merge is zero, go on to the next loop (check the next row)
+        
+        # otherwise, the number of units to merge >= 4
+        # loop that changes all units in a row of the same colour to black
+        add $t4, $zero, $zero                   # set the loop unit count to 0
+        
+        merge_units_loop:
+            addi $t4, $t4, 1                        # increment the loop counter by 1
+            sw $t9, 0($t0)                          # sets the value at game_array pointer to black
+            addi $t0, $t0, -4                       # decreases the game_array pointer by 4 because it was initialised at the last of the same colour units
+            bne $t4, $t6, merge_units_loop          # loops until the loop counter = the number of units to merge
+        ############## CALL MERGE ALL CAPSULES DOWN #############################################################################################
+        j merge_row_loop                            # jump to start of merge_row_loop to check the current row again for any more same colours
+        
+        decrement_merge_row_loop:
+            addi $t3, $t3, -1                       # decrease the row number by 1
+            blt $t3, 0, merge_row_loop              # loops until it hits the top row of the game
+
+exit_merge_row:
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+
+# START OF CHECK_MERGE_ROW
+# inputs: a0 (y/row value)
+# returns: v0 (game_array offset of the end of v1 same colours in a row or -1 if there are none), 
+#          v1 (if there are >= 4 units of the same colour return that number; if there are < 4, return 0)
+# registers: t0 (game_array pointer), t1 (colour count), t2 (x/column count), t5 (game_array address), t7 (current colour), t8 (next colour), t9 (the colour black)
+check_merge_row:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+
+    lw $t9, black               # load the colour black into t9
+    la $t5, game_array          # load the game array base address into t5
+    
+    # need to add 32 y times
+    add $t0, $t5, $zero         # initialise the game_array pointer
+    add $t2, $zero, $zero       # initialise the loop counter
+    beq $t2, $a0, skip_loop_to_y
+    
+    # loop that adds 32 (8 units per row x 4 bits per unit) y times to set game_array offset
+    loop_to_y:
+    addi $t0, $t0, 32           # add 32 each loop (bits per row)
+    addi $t2, $t2, 1            # increment the loop counter
+    bne $t2, $a0, loop_to_y     # loop until loop counter = y rows
+    
+    skip_loop_to_y:
+    # loop that checks the row for 4 consecutive values of the same colour
+    addi $t1, $zero, 1          # initialise the colour count
+    lw $t7, black               # initialise the current colour
+    add $t2, $zero, $zero       # reset the loop counter
+    
+    check_merge_row_loop:
+        lw $t8, 0($t0)              # load the colour at the game array index into t8
+        
+        beq $t7, $t8, check_merge_row_loop_equals       # if the current colour and next colour are equal, jump to that condition
+        
+        # otherwise, we know that the next colour is different from the current colour (and is not black)
+        bge $t1, 4, return_merge_row_positive       # if the colour count >= 4, jump to return
+        
+        add $t7, $t8, $zero                         # set current colour = next colour
+        addi $t1, $zero, 1                           # reset the colour count
+        j increment_check_merge_row_loop
+        
+        # we know that the current colour and next colour are equal. increment the colour count by 1 and check for 4 in a row.
+        check_merge_row_loop_equals:
+            beq $t9, $t8, check_merge_row_loop_black    # if the colour is black, jump to that condition
+            addi $t1, $t1, 1                            # increment the current colour count by 1
+            j increment_check_merge_row_loop
+        
+        # we know that the current colour is black
+        check_merge_row_loop_black:
+        addi $t1, $zero, 1                              # reset the colour count
+        j increment_check_merge_row_loop                # next loop
+        
+        increment_check_merge_row_loop:
+            addi $t2, $t2, 1                            # increase the loop counter by 1
+            addi $t0, $t0, 4                            # add 4 to the game_array offset to check the next value
+            blt $t2, 8, check_merge_row_loop            # jump to next loop if $t2 is less than 8
+    
+    bge $t1, 4, return_merge_row_positive
+    
+    # there are no four consecutive same colours
+    return_merge_row_loop_negative:
+    addi $v0, $zero, -1                       # return -1 as game_array offset to indicate no merge
+    add $v1, $zero, $zero                     # return zero as number of units to merge  
+    j exit_check_merge_row
+    
+    # there are four consecutive same colours
+    return_merge_row_positive:
+    sub $t0, $t0, $t5                           # the game_array offset (last value)
+    subi $t0, $t0, 4
+    add $v0, $t0, $zero                         # returns the game_array offset
+    add $v1, $t1, $zero                         # returns the number of units that are the same colour
+    j exit_check_merge_row
+    
+    exit_check_merge_row:
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END OF CHECK_MERGE_ROW
 
 exit:
