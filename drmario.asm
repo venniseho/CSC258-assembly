@@ -830,7 +830,7 @@ check_bottom_collision:
 # END CHECK_BOTTOM_COLLISION
 
 # START OF MERGE_ROW
-# returns: v0 (game_array offset of the start of 4 same colours in a row or 0 if there are none)
+# returns: v0 (game_array offset of the end of 4 same colours in a row or 0 if there are none)
 # registers: t0 (game_array pointer), t3 (y/row count), t4 (loop unit count), t6 (max units in a row count; from call the check_merge_row), 
 #            t5 (game_array address), t9 (the colour black)
 merge_row:
@@ -933,7 +933,7 @@ check_merge_row:
     bge $t1, 4, return_merge_row_positive
     
     # there are no four consecutive same colours
-    return_merge_row_loop_negative:
+    return_merge_row_negative:
     addi $v0, $zero, -1                       # return -1 as game_array offset to indicate no merge
     add $v1, $zero, $zero                     # return zero as number of units to merge  
     j exit_check_merge_row
