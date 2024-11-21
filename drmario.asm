@@ -190,11 +190,14 @@ game_loop:
 	# 2B. UPDATE LOCATION (CAPSULES)
 	location:
 	jal update_capsule_location             # after this call, the game_array locations should be updated
-	jal merge_row
+	# jal merge_row
 	
 	# 3. Draw the screen
 	jal update_display
 	# 4. Sleep
+	# li $v0, 32
+	# li $a0, 320
+	# syscall
 
     # 5. Go back to Step 1
     j game_loop
@@ -863,7 +866,7 @@ merge_row:
         
         decrement_merge_row_loop:
             addi $t3, $t3, -1                       # decrease the row number by 1
-            blt $t3, 0, merge_row_loop              # loops until it hits the top row of the game
+            bge $t3, 0, merge_row_loop              # loops until it hits the top row of the game
 
 exit_merge_row:
     lw $ra, 0($sp)           # Load the saved value of $ra from the stack
