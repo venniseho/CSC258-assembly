@@ -13,7 +13,6 @@
 # - Display height in pixels:   256
 # - Base Address for Display:   0x10008000 ($gp)
 ##############################################################################
-
     .data
 ##############################################################################
 # Immutable Data
@@ -69,6 +68,70 @@ capsuleID_count:        .word 0             # increases each time a capsule is a
 ##############################################################################
 # Code
 ##############################################################################
+.macro store_registers() 
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t9, 0($sp)              # Store the value of $t9 at the top of the stack
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t8, 0($sp)              # Store the value of $t8 at the top of the stack
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t7, 0($sp)              # Store the value of $t7 at the top of the stack
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t6, 0($sp)              # Store the value of $t6 at the top of the stack
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t5, 0($sp)              # Store the value of $t5 at the top of the stack
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t4, 0($sp)              # Store the value of $t4 at the top of the stack
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t3, 0($sp)              # Store the value of $t3 at the top of the stack
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t2, 0($sp)              # Store the value of $t2 at the top of the stack
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t1, 0($sp)              # Store the value of $t1 at the top of the stack
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $t0, 0($sp)              # Store the value of $t0 at the top of the stack
+.end_macro
+
+.macro load_registers() 
+    lw $t0, 0($sp)           # Load the saved value of $t0 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    lw $t1, 0($sp)           # Load the saved value of $t1 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    lw $t2, 0($sp)           # Load the saved value of $t2 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    lw $t3, 0($sp)           # Load the saved value of $t3 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    lw $t4, 0($sp)           # Load the saved value of $t4 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    lw $t5, 0($sp)           # Load the saved value of $t5 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    lw $t6, 0($sp)           # Load the saved value of $t6 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    lw $t7, 0($sp)           # Load the saved value of $t7 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    lw $t8, 0($sp)           # Load the saved value of $t8 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    
+    lw $t9, 0($sp)           # Load the saved value of $t9 from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+.end_macro	
+	
 	.text
 	.globl main
 
@@ -886,15 +949,15 @@ merge_row:
         # otherwise, the number of units to merge >= 4
         # loop that changes all units in a row of the same colour to black
         add $t4, $zero, $zero                   # set the loop unit count to 0
-        # la $t8, capsuleID_array                 # load address of capsuleID_array into t8
-        # add $t8, $t8, $v0                       # set the capsuleID_array pointer to the base address + returned offset of the last of the same colour units
+        la $t8, capsuleID_array                 # load address of capsuleID_array into t8
+        add $t8, $t8, $v0                       # set the capsuleID_array pointer to the base address + returned offset of the last of the same colour units
         merge_row_units_loop:
             addi $t4, $t4, 1                        # increment the loop counter by 1
             
             sw $t9, 0($t0)                          # sets the value at game_array pointer to black
             addi $t0, $t0, -4                       # decreases the game_array pointer by 4 because it was initialised at the last of the same colour units
-            # sw $zero, 0($t8)                        # sets the value at capsuleID_array to 0
-            # addi $t8, $t8, -4                       # decreases the capsuleID_array pointer by 4 because it was initialised at the last of the same colour units
+            sw $zero, 0($t8)                        # sets the value at capsuleID_array to 0
+            addi $t8, $t8, -4                       # decreases the capsuleID_array pointer by 4 because it was initialised at the last of the same colour units
             
             bne $t4, $t6, merge_row_units_loop          # loops until the loop counter = the number of units to merge
         ############## CALL MERGE ALL CAPSULES DOWN #############################################################################################
@@ -922,21 +985,14 @@ check_merge_row:
     la $t5, game_array          # load the game array base address into t5
     
     # need to add 32 y times
-    add $t0, $t5, $zero         # initialise the game_array pointer
-    add $t2, $zero, $zero       # initialise the loop counter
-    beq $t2, $a0, skip_loop_to_y
+    sll $t0, $a0, 5             # multiply y by 32
+    add $t0, $t0, $t5           # initialise the game_array pointer
     
-    # loop that adds 32 (8 units per row x 4 bits per unit) y times to set game_array offset
-    loop_to_y:
-    addi $t0, $t0, 32           # add 32 each loop (bits per row)
-    addi $t2, $t2, 1            # increment the loop counter
-    bne $t2, $a0, loop_to_y     # loop until loop counter = y rows
-    
-    skip_loop_to_y:
     # loop that checks the row for 4 consecutive values of the same colour
     addi $t1, $zero, 1          # initialise the colour count
     lw $t7, black               # initialise the current colour
     add $t2, $zero, $zero       # reset the loop counter
+    
     
     check_merge_row_loop:
         lw $t8, 0($t0)              # load the colour at the game array index into t8
@@ -1014,15 +1070,15 @@ merge_column:
         # otherwise, the number of units to merge >= 4
         # loop that changes all units in a row of the same colour to black
         add $t4, $zero, $zero                   # set the loop unit count to 0
-        # la $t8, capsuleID_array                 # load address of capsuleID_array into t8
-        # add $t8, $t8, $v0                       # set the capsuleID_array pointer to the base address + returned offset of the last of the same colour units
+        la $t8, capsuleID_array                 # load address of capsuleID_array into t8
+        add $t8, $t8, $v0                       # set the capsuleID_array pointer to the base address + returned offset of the last of the same colour units
         merge_column_units_loop:
             addi $t4, $t4, 1                        # increment the loop counter by 1
             
             sw $t9, 0($t0)                          # sets the value at game_array pointer to black
             addi $t0, $t0, -32                       # decreases the game_array pointer by 32 (8 units per row * 4 bits per unit) because it was initialised at the last of the same colour units
-            # sw $zero, 0($t8)                        # sets the value at capsuleID_array to 0
-            # addi $t8, $t8, -32                      # decreases the capsuleID_array pointer by 32 because it was initialised at the last of the same colour units
+            sw $zero, 0($t8)                        # sets the value at capsuleID_array to 0
+            addi $t8, $t8, -32                      # decreases the capsuleID_array pointer by 32 because it was initialised at the last of the same colour units
             
             bne $t4, $t6, merge_column_units_loop          # loops until the loop counter = the number of units to merge
         ############## CALL MERGE ALL CAPSULES DOWN #############################################################################################
