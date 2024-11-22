@@ -48,20 +48,23 @@ game_board_offset:     .word 1968
 # Mutable Data
 ##############################################################################
 game_array:             .word 0:128         # array containing the game
+capsuleID_array:        .word 0:128         # array containing the capsuleIDs
 
 curr_x1:                .word 0             # current x of half 1
 curr_y1:                .word 0             # current y of half 1
 new_x1:                 .word 0             # current x of half 1
 new_y1:                 .word 0             # current y of half 1
 colour_1:               .word 0             # current colour of half 1
+id_1:                   .word 0             # id number of the half 1
 
 curr_x2:                .word 0             # current x of half 2
 curr_y2:                .word 0             # current y of half 2
 new_x2:                 .word 0             # current x of half 2
 new_y2:                 .word 0             # current y of half 2
 colour_2:               .word 0             # current colour of half 2
+id_2:                   .word 0             # id number of the half 2
 
-viruses:                .word 0:8           # array containing virus addresses
+capsuleID_count:        .word 0             # increases each time a capsule is added to the board
 
 ##############################################################################
 # Code
@@ -83,9 +86,6 @@ main:
     jal update_display              # draw the display
 
 game_loop:
-    # jal check_bottom_collision          # checks if the pill hit the bottom of the walls
-    # beq $v0, 0, skip_pill                # returns 1 if collision
-    # jal generate_pill
     
     # skip_pill:
     # 1A. CHECK IF KEY HAS BEEN PRESSED & 1B. CHECK WHICH KEY HAS BEEN PRESSED
@@ -98,15 +98,21 @@ game_loop:
     # 2A. CHECK FOR COLLISIONS
     # remove the current values from the game_array
     la $t5, game_array          # load the address of the game_array
+    la $t4, capsuleID_array     # load the address of the capsuleID_array
+    
     # remove value of game_array[curr_x1, curr_y1] 
     lw $t7, curr_x1              # t1 = curr_x1
     lw $t8, curr_y1              # t2 = curr_y1
     add $a0, $t7, $zero          # arg x for xy_to_array
     add $a1, $t8, $zero          # arg y for xy_to_array
     jal xy_to_array
+    
     add $t0, $t5, $v0           # points to game_array[curr_x1, curr_y1]
     lw $t9, black               # load the colour black
     sw $t9, 0($t0)              # put the colour black into game_array[curr_x1, curr_y1]
+    
+    add $t1, $t4, $v0           # points to capsuleID_array[curr_x1, curr_y1]
+    sw $zero, 0($t1)            # put zero into the capsuleID_array[curr_x1, curr_y1]
     
     # remove value of game_array[curr_x2, curr_y2]
     lw $t7, curr_x2              # t1 = curr_x2
@@ -117,6 +123,8 @@ game_loop:
     add $t0, $t5, $v0           # points to game_array[curr_x2, curr_y2]
     lw $t9, black               # load the colour black
     sw $t9, 0($t0)              # put the colour black into game_array[curr_x2, curr_y2]
+    add $t1, $t4, $v0           # points to capsuleID_array[curr_x1, curr_y1]
+    sw $zero, 0($t1)            # put zero into the capsuleID_array[curr_x1, curr_y1]
     
     beq $s0, 0x61, check_side_collision                         # the given key is a
     beq $s0, 0x64, check_side_collision                         # the given key is d
@@ -194,14 +202,14 @@ game_loop:
 	
 	# 3. Draw the screen
 	jal update_display
-	# 4. Sleep
-	# li $v0, 32
-	# li $a0, 320
-	# syscall
 
     # 5. Go back to Step 1
     j game_loop
-
+    
+    # # 4. Sleep
+	# li $v0, 32
+	# li $a0, 320
+	# syscall
 
 ##############################################################################
 # FUNCTIONS
@@ -287,7 +295,8 @@ draw_bottle:
 # START GENERATE_VIRUS
 # function that generates a random coloured virus at a random location in the bottom half of the bottle and stores the virus in the game_array
 # inputs: a0 (number of viruses to generate)
-# registers: t0 (game_array pointer), t1 (generated x value), t2 (generated y value), t3 (generated colour), t5 (game_array pointer), t6 (value at game_array pointer), t7 (loop bound), t8 (virus counter)
+# registers: t0 (game_array pointer), t1 (generated x value), t2 (generated y value), t3 (generated colour), t4 (capsuleID_array), t5 (game_array pointer)
+#            t6 (value at game_array pointer), t7 (loop bound), t8 (virus counter)
 generate_virus: 
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
@@ -297,6 +306,7 @@ generate_virus:
     
     generate_virus_loop:
         la $t5, game_array          # load the base address of the game_array
+        la $t4, capsuleID_array     # load the base address of the capsuleID_array
         
         jal generate_colour         # generate the colour of the virus
         add $t3, $v0, $zero         # store generated colour in t3
@@ -323,12 +333,15 @@ generate_virus:
         # If the given address is empty, set the virus
         # If the given address already contains a virus, loop again without setting.
         add $t5, $t5, $v0                   # add offset to base game_array address
+        add $t4, $t4, $v0                   # add offset to base address of the capsuleID_array
         lw $t6, 0($t5)                      # load the value at the offset game_array address at t6
         beq $t6, $zero, set_virus           # if the value is equal to 0 (is empty), set the virus
         j next_generate_virus_loop          # otherwise, start the loop again
         
         set_virus:
             sw $t3, 0($t5)              # store the colour of the virus at this offset
+            add $t9, $zero, -1          # t9 = -1
+            sw $t9, 0($t4)              # store -1 (virus id) at this offset
             addi $t8, $t8, 1            # increase the virus counter by 1
             j next_generate_virus_loop
         
@@ -342,7 +355,7 @@ generate_virus:
 # END GENERATE_VIRUS
 
 # FUNCTION THAT GENERATES A RANDOM BI-COLOURED PILL AND DRAWS IT AT THE TOP OF THE BOTTLE
-# registers: t0 (game_array pointer), t1 (initial position of left half), t5 (game_array address), v0 (return val from generate_colour)
+# registers: t0 (game_array pointer), t1 (initial position of left half), v0 (return val from generate_colour)
 generate_pill: 
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
@@ -350,15 +363,15 @@ generate_pill:
     # checks if there is something blocking the entrance already
     lw $t1, init_x1             # load initial x1 value into t1
     lw $t2, init_y1             # load initial y1 value into t2    
-    la $t9, new_x1              # t6 = address of new_x1
-    la $t8, new_y1              # t5 = address of new_y1
+    la $t9, new_x1              # t9 = address of new_x1
+    la $t8, new_y1              # t8 = address of new_y1
     sw $t1, 0($t9)              # store intial x1 value in new_x1
     sw $t2, 0($t8)              # store intial y1 value in new_y1
     
     lw $t1, init_x2             # load initial x2 value into t1
     lw $t2, init_y2             # load initial y2 value into t2
-    la $t9, new_x2              # t6 = address of new_x2
-    la $t8, new_y2              # t5 = address of new_y2
+    la $t9, new_x2              # t9 = address of new_x2
+    la $t8, new_y2              # t8 = address of new_y2
     sw $t1, 0($t9)              # store intial x2 value in new_x2
     sw $t2, 0($t8)              # store intial y2 value in new_y2
     
@@ -380,7 +393,6 @@ generate_pill:
     sw $t1, 0($t9)              # store intial x1 value in curr_x1
     sw $t2, 0($t8)              # store intial y1 value in curr_y1
     
-    
     la $t7, colour_2            # t7 = address of colour_1
     jal generate_colour         # generate the right half of the pill and init at top of bottle
     sw $v0, 0($t7)              # store generated colour in colour_1
@@ -391,6 +403,11 @@ generate_pill:
     lw $t2, init_y2             # load initial y2 value into t2
     sw $t1, 0($t9)              # store intial x2 value in curr_x2
     sw $t2, 0($t8)              # store intial y2 value in curr_y2
+    
+    la $t6, capsuleID_count     # address of capsuleID_count
+    lw $t5, capsuleID_count     # value of capsuleID_count
+    addi $t5, $t5, 1            # add one to the capsuleID_count
+    sw $t5, 0($t6)              # store capsuleID_count + 1 
     
     lw $ra, 0($sp)           # Load the saved value of $ra from the stack
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
@@ -648,15 +665,17 @@ calculate_new_xy:
 # END CALCULATE_NEXT_XY
 
 # START OF UPDATE_CAPSULE_LOCATION
-# function that stores the new capsule location (new_x, new_y) into their respective positions in the game_array and removes them from their previous location (curr_x, curr_y)
-# registers: t0 (game_array pointer), t1 (x), t2 (y), t5 (game array address), t9 (temp colour), a0 (arg x for xy_to_array), a1 (arg y for xy_to_array)
+# function that stores the capsule location into their respective positions in the game_array 
+# registers: t0 (game_array pointer), t1 (x), t2 (y), t4 (capsuleID address), t5 (game array address), 
+#            t8 (capsuleID_array pointer), t9 (temp colour), a0 (arg x for xy_to_array), a1 (arg y for xy_to_array)
 update_capsule_location: 
     la $t5, game_array
+    la $t4, capsuleID_array
     
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
     
-    # set value at new_x1 and new_y1
+    # set value at curr_x1 and curr_y1
         add $t0, $t5, $zero     # t0 = game_array pointer
         
         lw $t1 curr_x1          # t1 = curr_x1
@@ -665,12 +684,18 @@ update_capsule_location:
         add $a0, $t1, $zero     # a0 = x arg for xy_to_array
         add $a1, $t2, $zero     # a1 = y arg for xy_to_array
         jal xy_to_array         
-        add $t0, $t0, $v0       # t0 = game_array pointer + offset
         
+        add $t0, $t0, $v0       # t0 = game_array pointer + offset
         lw $t9, colour_1        # load the first colour into t9
         sw $t9, 0($t0)          # set value at game_array[offset/4] to colour_1
+        
+        add $t8, $t4, $zero     # t8 = capsuleID_array pointer
+        add $t8, $t8, $v0       # t8 = capsuleID_array pointer + offset
+        lw $t9, capsuleID_count # load the current capsule count into t9
+        sw $t9, 0($t8)          # set value at capsuleID_array pointer to capsuleID count
+        
     
-    # set value at new_x2 and new_y2
+    # set value at curr_x2 and curr_y2
         add $t0, $t5, $zero     # t0 = game_array pointer
         
         lw $t1 curr_x2          # t1 = new_x2
@@ -679,10 +704,15 @@ update_capsule_location:
         add $a0, $t1, $zero     # a0 = x arg for xy_to_array
         add $a1, $t2, $zero     # a1 = y arg for xy_to_array
         jal xy_to_array         
-        add $t0, $t0, $v0       # t0 = game_array pointer + offset
         
+        add $t0, $t0, $v0       # t0 = game_array pointer + offset
         lw $t9, colour_2        # load the first colour into t9
         sw $t9, 0($t0)          # set value at game_array[offset/4] to colour_2
+        
+        add $t8, $t4, $zero     # t8 = capsuleID_array pointer
+        add $t8, $t8, $v0       # t8 = capsuleID_array pointer + offset
+        lw $t9, capsuleID_count # load the current capsule count into t9
+        sw $t9, 0($t8)          # set value at capsuleID_array pointer to capsuleID count
         
         lw $ra, 0($sp)           # Load the saved value of $ra from the stack
         addi $sp, $sp, 4         # Increase the stack pointer (free up space)
@@ -831,8 +861,8 @@ check_bottom_collision:
 
 # START OF MERGE_ROW
 # returns: v0 (game_array offset of the end of 4 same colours in a row or 0 if there are none)
-# registers: t0 (game_array pointer), t3 (y/row count), t4 (loop unit count), t6 (max units in a row count; from call the check_merge_row), 
-#            t5 (game_array address), t9 (the colour black)
+# registers: t0 (game_array pointer), t3 (y/row count), t4 (loop unit count), t5 (game_array address), 
+#            t6 (max units in a row count; from call the check_merge_row), t9 (the colour black)
 merge_row:
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
@@ -847,6 +877,7 @@ merge_row:
         add $a0, $t3, $zero                     # arg to check_merge_row; current y/row value
         jal check_merge_row
         
+        la $t5, game_array
         add $t0, $t5, $v0                       # set the game_array pointer to the base address + returned offset of the last of the same colour units (-1 = no units to merge)
         add $t6, $zero, $v1                     # t6 = v1 = the number of units to merge (0 or a value >=4) 
         
@@ -855,11 +886,16 @@ merge_row:
         # otherwise, the number of units to merge >= 4
         # loop that changes all units in a row of the same colour to black
         add $t4, $zero, $zero                   # set the loop unit count to 0
-        
+        # la $t8, capsuleID_array                 # load address of capsuleID_array into t8
+        # add $t8, $t8, $v0                       # set the capsuleID_array pointer to the base address + returned offset of the last of the same colour units
         merge_row_units_loop:
             addi $t4, $t4, 1                        # increment the loop counter by 1
+            
             sw $t9, 0($t0)                          # sets the value at game_array pointer to black
             addi $t0, $t0, -4                       # decreases the game_array pointer by 4 because it was initialised at the last of the same colour units
+            # sw $zero, 0($t8)                        # sets the value at capsuleID_array to 0
+            # addi $t8, $t8, -4                       # decreases the capsuleID_array pointer by 4 because it was initialised at the last of the same colour units
+            
             bne $t4, $t6, merge_row_units_loop          # loops until the loop counter = the number of units to merge
         ############## CALL MERGE ALL CAPSULES DOWN #############################################################################################
         j merge_row_loop                            # jump to start of merge_row_loop to check the current row again for any more same colours
@@ -978,11 +1014,16 @@ merge_column:
         # otherwise, the number of units to merge >= 4
         # loop that changes all units in a row of the same colour to black
         add $t4, $zero, $zero                   # set the loop unit count to 0
-        
+        # la $t8, capsuleID_array                 # load address of capsuleID_array into t8
+        # add $t8, $t8, $v0                       # set the capsuleID_array pointer to the base address + returned offset of the last of the same colour units
         merge_column_units_loop:
             addi $t4, $t4, 1                        # increment the loop counter by 1
+            
             sw $t9, 0($t0)                          # sets the value at game_array pointer to black
             addi $t0, $t0, -32                       # decreases the game_array pointer by 32 (8 units per row * 4 bits per unit) because it was initialised at the last of the same colour units
+            # sw $zero, 0($t8)                        # sets the value at capsuleID_array to 0
+            # addi $t8, $t8, -32                      # decreases the capsuleID_array pointer by 32 because it was initialised at the last of the same colour units
+            
             bne $t4, $t6, merge_column_units_loop          # loops until the loop counter = the number of units to merge
         ############## CALL MERGE ALL CAPSULES DOWN #############################################################################################
         j merge_column_loop                            # jump to start of merge_row_loop to check the current row again for any more same colours
