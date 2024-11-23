@@ -272,7 +272,9 @@ game_loop:
 	# 2B. UPDATE LOCATION (CAPSULES)
 	location:
 	jal update_capsule_location             # after this call, the game_array locations should be updated
-	# jal merge_row
+	jal check_win
+	beq $v0, 1, game_over_screen
+	
 	
 	# 3. Draw the screen
 	jal update_display
@@ -2245,5 +2247,45 @@ clear_screen:
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
     jr $ra
 # END OF CLEAR_SCREEN
+
+game_over_screen:
+li $v0, 10                      # quit gracefully
+syscall
+jr $ra
+
+# START CHECK_WIN
+# returns 0 if all viruses are not gone, and 1 if all virsues are gone
+# registers: t0 (capsuleID_array pointer), t1 (value at t0), t8 (loop counter), t9 (the colour black)
+check_win:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	la $t0, capsuleID_array         # load the capsuleID_array address
+	add $t8, $zero, $zero           # initialise the loop counter
+	
+	check_win_loop:
+    	addi $t8, $t8, 1                # increment loop counter by 1
+    	
+    	lw $t1, 0($t0)                     # load the value at the capsuleID_array pointer into t1
+    	beq $t1, -1, check_win_negative    # if the value is a -1 (indicating virus), jump to return 0
+    	
+    	addi $t0, $t0, 4                # point capsuleID_array pointer to next address in array
+    	blt $t8, 128, check_win_loop    # breaks after all values in capsuleID_array have been checked
+    
+    j check_win_positive                # otherwise, we have looped through all values and have not found any remaining viruses, return 1            
+    
+    check_win_positive:                 # return 1
+    addi $v0, $zero, 1
+	j exit_check_win
+    
+	check_win_negative:                # return 0
+	add $v0, $zero, $zero
+	j exit_check_win
+	
+	exit_check_win:
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+    jr $ra
+# END CHECK_WIN
 
 exit:
