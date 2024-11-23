@@ -51,19 +51,19 @@ capsuleID_array:        .word 0:128         # array containing the capsuleIDs
 
 curr_x1:                .word 0             # current x of half 1
 curr_y1:                .word 0             # current y of half 1
-new_x1:                 .word 0             # current x of half 1
-new_y1:                 .word 0             # current y of half 1
-colour_1:               .word 0             # current colour of half 1
-id_1:                   .word 0             # id number of the half 1
-
 curr_x2:                .word 0             # current x of half 2
 curr_y2:                .word 0             # current y of half 2
+
+new_x1:                 .word 0             # current x of half 1
+new_y1:                 .word 0             # current y of half 1
 new_x2:                 .word 0             # current x of half 2
 new_y2:                 .word 0             # current y of half 2
+
+colour_1:               .word 0             # current colour of half 1
 colour_2:               .word 0             # current colour of half 2
-id_2:                   .word 0             # id number of the half 2
 
 capsuleID_count:        .word 0             # increases each time a capsule is added to the board
+capsuleID_max:          .word 0             # only used in drop to save the current capsuleID_count
 
 ##############################################################################
 # Code
@@ -439,7 +439,6 @@ generate_pill:
     sw $t2, 0($t8)              # store intial y2 value in new_y2
     
     jal check_object_collision
-    jal check_object_collision
     beq $v0, 0, skip_game_over      # if there is no object at 
     li $v0, 10                      # quit gracefully
     syscall
@@ -514,6 +513,8 @@ generate_colour:
 update_display:
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    ############
+    store_registers()           # store registers
     
     la $t5, game_array              # load array address into t5
     add $t9, $zero, $zero           # init loop counter = 0
@@ -540,7 +541,9 @@ update_display:
         addi $t8, $t8, 4                        # increase offset counter by 4
         addi $t5, $t5, 4                        # increase array pointer by 4
         blt $t9, 128, update_display_loop       # loop 128 times
-        
+    
+    load_registers()
+    ###############
     lw $ra, 0($sp)           # Load the saved value of $ra from the stack
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
     jr $ra
@@ -773,7 +776,7 @@ update_capsule_location:
         
         add $t0, $t0, $v0       # t0 = game_array pointer + offset
         lw $t9, colour_2        # load the first colour into t9
-        sw $t9, 0($t0)          # set value at game_array[offset/4] to colour_2
+        sw $t9, 0($t0)          # set value at game_array[offset/4] to colour_2 
         
         add $t8, $t4, $zero     # t8 = capsuleID_array pointer
         add $t8, $t8, $v0       # t8 = capsuleID_array pointer + offset
@@ -966,7 +969,7 @@ merge_row:
             addi $t8, $t8, -4                       # decreases the capsuleID_array pointer by 4 because it was initialised at the last of the same colour units
             
             bne $t4, $t6, merge_row_units_loop          # loops until the loop counter = the number of units to merge
-            jal drop_capsule
+        jal drop_capsule
         j merge_row_loop                            # jump to start of merge_row_loop to check the current row again for any more same colours
         
         decrement_merge_row_loop:
@@ -1045,7 +1048,7 @@ check_merge_row:
     j exit_check_merge_row
     
     exit_check_merge_row:
-    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stackw
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
     jr $ra
 # END OF CHECK_MERGE_ROW
@@ -1087,7 +1090,12 @@ merge_column:
             addi $t8, $t8, -32                      # decreases the capsuleID_array pointer by 32 because it was initialised at the last of the same colour units
             
             bne $t4, $t6, merge_column_units_loop          # loops until the loop counter = the number of units to merge
+        
+        add $t8, $zero, $zero                          # drop_capsule_loop loop counter 
+        drop_capsule_loop:
+            addi $t8, $t8, 1
             jal drop_capsule
+        blt $t8, 16, drop_capsule_loop
         j merge_column_loop                            # jump to start of merge_row_loop to check the current row again for any more same colours
         
         decrement_merge_column_loop:
@@ -1179,6 +1187,10 @@ subi $sp, $sp, 4
 sw $ra, 0($sp)
 store_registers()
 
+la $t9, capsuleID_max       # load capsuleID_max addresss
+lw $t8, capsuleID_count     # load capsuleID_count number
+sw $t8, 0($t9)              # store capsuleID_count to capsuleID_max 
+
 la $s7, game_array
 la $s6, capsuleID_array
 
@@ -1190,7 +1202,6 @@ addi $s1, $s1, -1
 add $s0, $zero, $zero       # reset x count (column) when we reach a new y count (row) 
 
 drop_capsule_loop_x:
-addi $s0, $s0, 1
     # initialise capsule info to (-1, -1) and black
     # capsule half 1
     la $t1, curr_x1
@@ -1210,7 +1221,7 @@ addi $s0, $s0, 1
     sw $t3, 0($t1)
     sw $t3, 0($t2)
     
-    la $t1, colour_1
+    la $t1, colour_2
     lw $t2, black
     sw $t2, 0($t1)
 
@@ -1221,9 +1232,10 @@ addi $s0, $s0, 1
     add $t9, $s7, $v0       # game_array pointer = base address + offset
     add $t8, $s6, $v0       # capsuleID_array pointer = base address + offset
     
-    lw $t7, 0($t9)                              # value at game_array pointer
-    lw $t6, 0($t8)                              # value at capsuleID_array pointer (current unit's capsuleID)
-    beq $t7, 0, decrement_capsule_loop_y        # if the value at the game_array pointer is black, go to next loop
+    lw $t7, 0($t9)                              # colour at game_array pointer
+    lw $t6, 0($t8)                              # capsuleID at capsuleID_array pointer (current unit's capsuleID)
+    beq $t7, 0, increment_capsule_loop_x        # if the colour at the game_array pointer is black, go to next loop
+    beq $t6, -1, increment_capsule_loop_x       # if the value at the capsuleID is -1 (virus), go to next loop
     
     # otherwise, the current unit is not black, reconstruct the capsule
     la $t1, curr_x1         # store loop x, y at curr_x1, curr_y1
@@ -1234,21 +1246,24 @@ addi $s0, $s0, 1
     la $t1, colour_1        # store the colour at the pixel at colour_1
     sw $t7, 0($t1)    
     
+    la $t1, capsuleID_count     # to reconstruct, store the current capsuleID from the pointer in capsuleID_count
+    sw $t6, 0($t1)
+    
     # Find the other half of the capsule
     beq $s0, 0, skip_check_left         # if x loop value == 0, there is no left column
-    addi $t0, $s6, 4                    # check right in capsuleID_array
+    addi $t0, $t8, -4                    # check left in capsuleID_array
     lw $t1, 0($t0)                      # load value from capsuleID_array
-    beq $t1, $t6, capsule_to_right      # the capsule half to the right matches the capsule ID
+    beq $t1, $t6, capsule_to_left      # the capsule half to the left matches the capsule ID
     
     skip_check_left:
-    beq $s0, 8, skip_check_right        # if x loop value == 0, there is no right column
-    addi $t0, $s6, -4                   # check right in capsuleID_array
+    beq $s0, 7, skip_check_right        # if x loop value == 7, there is no right column
+    addi $t0, $t8, 4                   # check right in capsuleID_array
     lw $t1, 0($t0)                      # load value from capsuleID_array
-    beq $t1, $t6, capsule_to_left       # the capsule half to the left matches the capsule ID
+    beq $t1, $t6, capsule_to_right       # the capsule half to the right matches the capsule ID
     
     skip_check_right:
     beq $s1, 0, drop_capsule_action     # if y loop value == 0, there is no row above
-    addi $t0, $s6, -32                  # check top in capsuleID_array
+    addi $t0, $t8, -32                  # check top in capsuleID_array
     lw $t1, 0($t0)                      # load value from capsuleID_array
     beq $t1, $t6, capsule_to_top       # the capsule half to the top matches the capsule ID
     
@@ -1270,8 +1285,10 @@ addi $s0, $s0, 1
     la $t1, curr_x2         # store loop x + 1, y at curr_x2, curr_y2
     la $t2, curr_y2
     addi $t3, $s0, 1       # t3 = x + 1
-    sw $s0, 0($t1)
-    sw $t3, 0($t2)
+    sw $s1, 0($t2)
+    sw $t3, 0($t1)
+    # sw $s0, 0($t1)
+    # sw $t3, 0($t2)
     
     la $t1, colour_2        # store the colour at the pixel at colour_1
     lw $t7, 4($t9)          # value at game_array pointer + 4 (one unit right)
@@ -1279,11 +1296,13 @@ addi $s0, $s0, 1
     j drop_capsule_action
     
     capsule_to_left:
-    la $t1, curr_x2         # store loop x + 1, y at curr_x2, curr_y2
+    la $t1, curr_x2         # store loop x - 1, y at curr_x2, curr_y2
     la $t2, curr_y2
     addi $t3, $s0, -1       # t3 = x - 1
-    sw $s0, 0($t1)
-    sw $t3, 0($t2)
+    sw $s1, 0($t2)          # store y from loop in curr_y2
+    sw $t3, 0($t1)          # store x -1 from loop in curr_x2
+    # sw $s0, 0($t1)
+    # sw $t3, 0($t2)
     
     la $t1, colour_2        # store the colour at the pixel at colour_1
     lw $t7, -4($t9)         # value at game_array pointer - 4 (one unit left)
@@ -1294,7 +1313,7 @@ addi $s0, $s0, 1
     lw $t1, colour_1
     lw $t2, colour_2
     
-    beq $t1, 0, decrement_capsule_loop_y        # colour 1 is black
+    beq $t1, 0,  increment_capsule_loop_x        # colour 1 is black
     beq $t2, 0, move_half_capsule        # colour 2 is black but colour 1 is not
     
     # otherwise, we know neither colour_1 or colour_2 are black
@@ -1335,11 +1354,13 @@ addi $s0, $s0, 1
         
         check_down_collision_drop_full:
             jal check_bottom_collision          # checks if the pill hit the bottom of the walls
-            beq $v0, 1, decrement_capsule_loop_y                # returns 1 if collision
+            beq $v0, 1,  restore_capsule               # returns 1 if collision
+            # beq $v0, 1,  increment_capsule_loop_x               # returns 1 if collision
             
             # otherwise, the pill did not hit a wall
             jal check_object_collision                          # checks if the pill hit an object
-            beq $v0, 1, decrement_capsule_loop_y                # returns 1 if collision
+            beq $v0, 1,  restore_capsule             # returns 1 if collision
+            # beq $v0, 1,  increment_capsule_loop_x             # returns 1 if collision
             
             # otherwise, we can move the pill to the new position
             # update curr_x, curr_y = new_x, new_y
@@ -1358,13 +1379,11 @@ addi $s0, $s0, 1
             la $t1, curr_y2         # t1 = curr_y2 address
             lw $t2, new_y2          # t2 = new_y2
             sw $t2, 0($t1)          # store new_y2 at curr_y2 address
-        
-        j decrement_capsule_loop_y
+        j restore_capsule
+        # j  increment_capsule_loop_x
     
     move_half_capsule:
-        # calculate new_x, new_y given that the keypress is down
-        addi $a0, $zero, 0x73           # dropping, so keypress = s
-        jal calculate_new_xy            # after this call, new_x and new_y will contain new positions
+        jal calculate_new_xy_drop_half            # after this call, new_x and new_y will contain new positions
         
         # remove the current values from the game_array and capsuleID_array
         la $t5, game_array          # load the address of the game_array
@@ -1386,11 +1405,13 @@ addi $s0, $s0, 1
         
         check_down_collision_drop_half:
             jal check_bottom_collision_half          # checks if the pill hit the bottom of the walls
-            beq $v0, 1, decrement_capsule_loop_y                # returns 1 if collision
+            beq $v0, 1, restore_capsule_half               # returns 1 if collision
+            # beq $v0, 1, increment_capsule_loop_x               # returns 1 if collision
             
             # otherwise, the pill did not hit a wall
             jal check_object_collision_half                          # checks if the pill hit an object
-            beq $v0, 1, decrement_capsule_loop_y                # returns 1 if collision
+            beq $v0, 1, restore_capsule_half                # returns 1 if collision
+            # beq $v0, 1, increment_capsule_loop_x                # returns 1 if collision
             
             # otherwise, we can move the pill to the new position
             # update curr_x, curr_y = new_x, new_y
@@ -1402,15 +1423,33 @@ addi $s0, $s0, 1
             lw $t2, new_y1          # t2 = new_y1
             sw $t2, 0($t1)          # store new_y1 at curr_y1 address
         
-        j decrement_capsule_loop_y
+        j restore_capsule_half
+        # jal update_capsule_location_half
+        # j increment_capsule_loop_x
+    
+    restore_capsule:
+    jal update_capsule_location
+    j increment_capsule_loop_x
+    
+    restore_capsule_half:
+    jal update_capsule_location_half
+    j increment_capsule_loop_x
     
     increment_capsule_loop_x:
-    ble $s0, 8, drop_capsule_loop_x
+    addi $s0, $s0, 1
+    # display for testing
+    jal update_display
+    ble $s0, 7, drop_capsule_loop_x
 
 decrement_capsule_loop_y:
-ble $s1, 0, drop_capsule_loop_y
+bge $s1, 1, drop_capsule_loop_y
+
 
 exit_drop_capsule:
+la $t9, capsuleID_count       # load capsuleID_count addresss
+lw $t8, capsuleID_max        # load capsuleID_max number
+sw $t8, 0($t9)              # store capsuleID_max to capsuleID_count
+
 load_registers()
 lw $ra, 0($sp)           # Load the saved value of $ra from the stack
 addi $sp, $sp, 4         # Increase the stack pointer (free up space)  
@@ -1483,4 +1522,68 @@ check_bottom_collision_half:
     
     jr $ra
 # END CHECK_BOTTOM_COLLISION_HALF
+
+# START CALCULATE_NEXT_XY_HALF
+# function that calculates the next_x and next_y position and stores the new positions in memory
+#       if the given key is one of w, a, s, d, write in a new_x and new_y
+#       otherwise, the given key is n new_x and new_y are assigned to curr_x and curr_y, respectively
+
+# note: all x and y's are in relation to the GAME ARRAY setup; no return, this function mutates
+# inputs: a0 (the given key; it will be one of w, a, s, d, n)
+# registers: t1 (curr_x1), t2 (curr_x2), t3 (new_x1 address), t4 (new_x2 address), t5 (curr_y1), t6 (curr_y2), t7 (new_y1 address), t8 (new_y2 address) 
+calculate_new_xy_drop_half:
+    store_registers()
+    
+    lw $t1, curr_x1             # t1 = curr_x1
+    la $t3, new_x1              # t3 = new_x1 address
+    lw $t5, curr_y1             # t5 = curr_y1
+    la $t7, new_y1              # t7 = new_y1 address
+    
+    # to ensure proper calculations, set new_x, new_y as curr_x, curr_y 
+    sw $t1, 0($t3)              # set new_x1 = curr_x1
+    sw $t5, 0($t7)              # set new_y1 = curr_y1
+
+    # shift the half, one unit down
+    addi $t5, $t5, 1           # add one from curr_y1, curr_y2 to shift down
+    sw $t5, 0($t7)              # store curr_y1 + 1 at new_y1 address
+    
+    load_registers()
+    jr $ra
+# END CALCULATE_NEXT_XY_HALF
+
+# START OF UPDATE_CAPSULE_LOCATION_HALF
+# function that stores the capsule location into their respective positions in the game_array 
+# registers: t0 (game_array pointer), t1 (x), t2 (y), t4 (capsuleID address), t5 (game array address), 
+#            t8 (capsuleID_array pointer), t9 (temp colour), a0 (arg x for xy_to_array), a1 (arg y for xy_to_array)
+update_capsule_location_half: 
+    la $t5, game_array
+    la $t4, capsuleID_array
+    
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+    # set value at curr_x1 and curr_y1
+        add $t0, $t5, $zero     # t0 = game_array pointer
+        
+        lw $t1 curr_x1          # t1 = curr_x1
+        lw $t2 curr_y1          # t2 = curr_y1
+        
+        add $a0, $t1, $zero     # a0 = x arg for xy_to_array
+        add $a1, $t2, $zero     # a1 = y arg for xy_to_array
+        jal xy_to_array         
+        
+        add $t0, $t0, $v0       # t0 = game_array pointer + offset
+        lw $t9, colour_1        # load the first colour into t9
+        sw $t9, 0($t0)          # set value at game_array[offset/4] to colour_1
+        
+        add $t8, $t4, $zero     # t8 = capsuleID_array pointer
+        add $t8, $t8, $v0       # t8 = capsuleID_array pointer + offset
+        lw $t9, capsuleID_count # load the current capsule count into t9
+        sw $t9, 0($t8)          # set value at capsuleID_array pointer to capsuleID count
+        
+        lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+        addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+        jr $ra
+# END OF UPDATE_CAPSULE_LOCATION_HALF
+
 exit:
