@@ -254,6 +254,18 @@ game_loop:
     
     # otherwise, we can move the pill to the new position
     # update curr_x, curr_y = new_x, new_y
+    beq $s0, 0x77, play_rotate_sound                         # the given key is w
+    
+    # otherwise, we know either a or d was pressed
+    play_shift_sound:
+    jal shift_sound
+    j shift_capsule
+    
+    play_rotate_sound:
+    jal rotate_sound
+    j shift_capsule
+    
+    shift_capsule:
     la $t1, curr_x1         # t1 = curr_x1 address
     lw $t2, new_x1          # t2 = new_x1
     sw $t2, 0($t1)          # store new_x1 at curr_x1 address
@@ -282,6 +294,7 @@ game_loop:
     
     # otherwise, we can move the pill to the new position
     # update curr_x, curr_y = new_x, new_y
+    
     la $t1, curr_x1         # t1 = curr_x1 address
     lw $t2, new_x1          # t2 = new_x1
     sw $t2, 0($t1)          # store new_x1 at curr_x1 address
@@ -301,6 +314,7 @@ game_loop:
     j location
     
     down_collision_true:
+    jal collide_sound
     jal update_capsule_location
     jal merge_row
     jal merge_column
@@ -1042,6 +1056,7 @@ merge_row:
         add $t4, $zero, $zero                   # set the loop unit count to 0
         la $t8, capsuleID_array                 # load address of capsuleID_array into t8
         add $t8, $t8, $v0                       # set the capsuleID_array pointer to the base address + returned offset of the last of the same colour units
+        jal merge_sound
         merge_row_units_loop:
             addi $t4, $t4, 1                        # increment the loop counter by 1
             
@@ -1163,6 +1178,7 @@ merge_column:
         add $t4, $zero, $zero                   # set the loop unit count to 0
         la $t8, capsuleID_array                 # load address of capsuleID_array into t8
         add $t8, $t8, $v0                       # set the capsuleID_array pointer to the base address + returned offset of the last of the same colour units
+        jal merge_sound
         merge_column_units_loop:
             addi $t4, $t4, 1                        # increment the loop counter by 1
             
@@ -1189,7 +1205,7 @@ exit_merge_column:
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
     jr $ra
 
-# START OF CHECK_MERGE_ROW
+# START OF CHECK_MERGE_COLUMN
 # inputs: a0 (x/column value)
 # returns: v0 (game_array offset of the end of v1 same colours in a row or -1 if there are none), 
 #          v1 (if there are >= 4 units of the same colour return that number; if there are < 4, return 0)
@@ -1197,6 +1213,7 @@ exit_merge_column:
 check_merge_column:
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    store_registers()
 
     lw $t9, black               # load the colour black into t9
     la $t5, game_array          # load the game array base address into t5
@@ -1255,6 +1272,7 @@ check_merge_column:
     j exit_check_merge_column
     
     exit_check_merge_column:
+    load_registers()
     lw $ra, 0($sp)           # Load the saved value of $ra from the stack
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
     jr $ra
@@ -2957,6 +2975,7 @@ beq $a0, 0, draw_game_over      # if the user lost, draw game over
 beq $a0, 1, draw_you_win        # if the user won, draw you win
 
 draw_you_win:               # draw you win on the screen
+    # jal win_sound
     lw $t0, ADDR_DSPL
 	addi $a0, $t0, 768
 	lw $a1, white
@@ -2966,10 +2985,13 @@ draw_you_win:               # draw you win on the screen
     addi $a0, $t0, 1664
     lw $a1, white
     jal draw_win
+    
+    jal win_sound
 	
 	j check_retry
 
 draw_game_over:             # draw game over on the screen
+    # jal lose_sound
     lw $t0, ADDR_DSPL
 	addi $a0, $t0, 768
 	lw $a1, white
@@ -2979,7 +3001,7 @@ draw_game_over:             # draw game over on the screen
     addi $a0, $t0, 1664
     lw $a1, white
     jal draw_over
-    
+    jal lose_sound
     j check_retry
 
 check_retry:
@@ -3147,3 +3169,213 @@ display_next_pill:
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
     jr $ra
 # END OF DISPLAY_NEXT_PILL
+
+# START SHIFT_SOUND
+shift_sound:
+	subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+	store_registers()
+	
+	li $v0, 31
+    li $a0, 75 # pitch
+    li $a1, 250 # duration
+    li $a2, 115 # instrument
+    li $a3, 100 # volume
+    syscall
+	
+	exit_shift_sound:
+	load_registers()
+	lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END SHIFT_SOUND
+
+# START ROTATE_SOUND
+rotate_sound:
+	subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    store_registers()
+	
+	li $v0, 31
+    li $a0, 80 # pitch
+    li $a1, 250 # duration
+    li $a2, 118 # instrument
+    li $a3, 100 # volume
+    syscall
+	
+	exit_rotate_sound:
+	load_registers()
+	lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END rotate_SOUND
+
+# START COLLIDE_SOUND
+collide_sound:
+	subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    store_registers()
+	
+	li $v0, 31
+    li $a0, 25 # pitch
+    li $a1, 250 # duration
+    li $a2, 115 # instrument
+    li $a3, 100 # volume
+    syscall
+	
+	exit_collide_sound:
+	load_registers()
+	lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END COLLIDE_SOUND
+
+# START MERGE_SOUND
+merge_sound:
+	subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    store_registers()
+	
+	li $v0, 31
+    li $a0, 82 # pitch
+    li $a1, 300 # duration
+    li $a2, 10 # instrument
+    li $a3, 100 # volume
+    syscall
+	
+	exit_merge_sound:
+	load_registers()
+	lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END CLICK_SOUND
+
+# START LOSE_SOUND
+lose_sound:
+	subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    store_registers()
+	
+	li $t1, 74
+    
+    li $v0, 32
+	li $a0, 500
+	syscall
+    
+    li $v0, 31
+    add $a0, $t1, $zero # pitch
+    li $a1, 400 # duration
+    li $a2, 57 # instrument
+    li $a3, 100 # volume
+    syscall
+    
+    li $v0, 32
+	li $a0, 500
+	syscall
+	
+	addi $t1, $t1, -1
+	
+	li $v0, 31
+    add $a0, $t1, $zero # pitch
+    li $a1, 400 # duration
+    li $a2, 57 # instrument
+    li $a3, 100 # volume
+    syscall
+    
+    li $v0, 32
+	li $a0, 500
+	syscall
+	
+	addi $t1, $t1, -1
+	
+	li $v0, 31
+    add $a0, $t1, $zero # pitch
+    li $a1, 400 # duration
+    li $a2, 57 # instrument
+    li $a3, 100 # volume
+    syscall
+    
+    li $v0, 32
+	li $a0, 500
+	syscall
+	
+	addi $t1, $t1, -1
+	
+	li $v0, 31
+    add $a0, $t1, $zero # pitch
+    li $a1, 400 # duration
+    li $a2, 57 # instrument
+    li $a3, 100 # volume
+    syscall
+	
+	exit_lose_sound:
+	load_registers()
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END LOSE_SOUND
+
+# START WIN_SOUND
+win_sound:
+	subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    store_registers()
+	
+	li $t1, 80
+	
+	li $v0, 32
+	li $a0, 500
+	syscall
+	
+	li $v0, 31
+    add $a0, $t1, $zero # pitch
+    li $a1, 400 # duration
+    li $a2, 10 # instrument
+    li $a3, 100 # volume
+    syscall
+    
+    li $v0, 32
+	li $a0, 500
+	syscall
+	
+	addi $t1, $t1, 4
+	
+	li $v0, 31
+    add $a0, $t1, $zero # pitch
+    li $a1, 400 # duration
+    li $a2, 10 # instrument
+    li $a3, 100 # volume
+    syscall
+    
+    li $v0, 32
+	li $a0, 500
+	syscall
+	
+	addi $t1, $t1, 3
+	
+	li $v0, 31
+    add $a0, $t1, $zero # pitch
+    li $a1, 400 # duration
+    li $a2, 10 # instrument
+    li $a3, 100 # volume
+    syscall
+    
+    li $v0, 32
+	li $a0, 500
+	syscall
+	
+	addi $t1, $t1, 5
+	
+	li $v0, 31
+    add $a0, $t1, $zero # pitch
+    li $a1, 400 # duration
+    li $a2, 10 # instrument
+    li $a3, 100 # volume
+    syscall
+	
+	exit_win_sound:
+	load_registers()
+	lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END WIN_SOUND
