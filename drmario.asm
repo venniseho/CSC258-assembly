@@ -36,6 +36,7 @@ w:          .word 0x77
 s:          .word 0x73
 q:          .word 0x71
 n:          .word 0x6e
+p:          .word 0x70
 enter:      .word 0xa
 
 init_x1:     .word 3
@@ -67,7 +68,7 @@ capsuleID_count:        .word 0             # increases each time a capsule is a
 capsuleID_max:          .word 0             # only used in drop to save the current capsuleID_count
 
 current_mode:           .word 0             # used to set the mode to easy, medium, or hard
-current_screen:         .word 0             # 0 = mode_screen, 1 = game_screen, 2 = game_over_screen
+current_screen:         .word 0             # 0 = mode_screen, 1 = game_screen, 2 = game_over_screen, 3 = paused_state
 
 virus_number:           .word 0
 game_speed:             .word 0 
@@ -149,6 +150,11 @@ main:
     # Start with the mode_screen to choose a level (easy, med, hard)
     jal mode_screen
     jal clear_screen
+    
+    # set current screen = 1 (game screen)
+    la $t0, current_screen
+    addi $t1, $zero, 1
+    sw $t1, 0($t0)
 
     # Initialize the game
     jal draw_bottle                 # draw the bottle
@@ -632,6 +638,10 @@ jr $ra
 # returns: v0 (the ASCII code for a letter - w, a, s, d, q, n)
 # registers: t7 (ASCII key value of key pressed), t8 (value at keyboard_address --> 0 or 1), t9 (keyboard_address)
 check_key_press:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    store_registers()
+    
     lw $t9, ADDR_KBRD               # $t9 = base keyboard address
     lw $t8, 0($t9)                  # $t8 = value at keyboard address
     beq $t8, 1, keyboard_input      # if $t8 == 1: key was pressed (ASCII key value found in next value in memory)
@@ -648,6 +658,7 @@ check_key_press:
     beq $t7, 0x77, valid_key        # w was pressed
     beq $t7, 0x73, valid_key        # s was pressed
     beq $t7, 0x71, respond_to_q     # q was pressed
+    beq $t7, 0x70, respond_to_p     # p was pressed
     lw $t6, enter
     beq $t7, $t6, valid_key        # enter was pressed
     
@@ -661,8 +672,20 @@ check_key_press:
         respond_to_q:
     	li $v0, 10                      # quit gracefully
     	syscall
+    	
+    	respond_to_p:
+    	lw $t0, current_screen             # load the current screen value into t0 
+    	bne $t0, 1, skip_paused_screen     # if the current screen value != 1 (not game_screen), skip
+    	jal paused_state
+    	
+    	skip_paused_screen:
+    	lw $v0, p                       # return ascii p if the current screen is not game_screen 
+        j exit_check_key_press          # --> jump to exit
 	
 	exit_check_key_press:
+	load_registers()
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
 	jr $ra                           # exit the function
 # END OF CHECK_KEY_PRESS
 
@@ -1633,6 +1656,11 @@ subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
 sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
 # initialise game mode to easy
 
+# set current screen = 0 (mode screen)
+la $t0, current_screen
+add $t1, $zero, $zero
+sw $t1, 0($t0)
+
 # init easy
 # set number of viruses to 4
     la $t4, virus_number
@@ -2276,6 +2304,50 @@ draw_O:
     jr $ra
 # END DRAW_O
 
+# START OF DRAW_P
+# draws an A directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_P:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+	# 3 units across ---
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by start of next row (128 - 8)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 3 units across ---
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 128           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+    jr $ra
+# END DRAW_P
+
 # START OF DRAW_R
 # draws an R directly on the bitmap
 # inputs: a0 (bitmap address of top left point), a1 (colour)
@@ -2856,9 +2928,14 @@ draw_win:
 # inputs: a0 (win (1) or lose (0))
 # registers used: t0 (bitmap pointer), t3 (temp number), t4 (virus_number/game_speed), t5 (current_mode address), t6 (current_mode number), t8 (enter key ascii), t9 (keypress)
 game_over_screen:
-jal clear_screen
-beq $a0, 0, draw_game_over
-beq $a0, 1, draw_you_win
+# set current screen = 2 (game over screen)
+la $t0, current_screen
+addi $t1, $zero, 2
+sw $t1, 0($t0)
+    
+jal clear_screen                # clear the screen
+beq $a0, 0, draw_game_over      # if the user lost, draw game over
+beq $a0, 1, draw_you_win        # if the user won, draw you win
 
 draw_you_win:               # draw you win on the screen
     lw $t0, ADDR_DSPL
@@ -2892,10 +2969,14 @@ check_retry:
     lw $a1, blue
     jal draw_retry
     
-    check_retry_loop: 
-    jal check_key_press
+    check_retry_loop:           # checks for keypress = r, so we know to reset the game
+    jal check_key_press         # otherwise, quit
     add $t9, $v0, $zero
     lw $t8, enter
+    
+    li $v0, 32
+	li $a0, 100
+	syscall
     bne $t9, $t8, check_retry_loop
     
     # we know that outside this loop, the user pressed r because q quits.
@@ -2939,4 +3020,86 @@ lw $ra, 0($sp)           # Load the saved value of $ra from the stack
 addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
 jr $ra
 # END OF RESET_GAME
+
+# START OF DRAW_PAUSED
+# draws the word paused in the centre of the top row of the bitmap
+# inputs: a0 (bitmap address of top row/y value), a1 (colour)
+draw_paused:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
+    
+    add $s0, $a0, 16            # s0 = add 32 to row/y value for centring
+	add $s1, $a1, $zero         # s1 = colour
+	
+	add $a0, $s0, $zero
+	add $a1, $s1, $zero
+    jal draw_P
+	
+	add $a0, $s0, 16
+	add $a1, $s1, $zero
+    jal draw_A
+    
+    add $a0, $s0, 32
+	add $a1, $s1, $zero
+    jal draw_U
+    
+    add $a0, $s0, 48
+	add $a1, $s1, $zero
+    jal draw_S
+    
+    add $a0, $s0, 64
+	add $a1, $s1, $zero
+    jal draw_E
+    
+    add $a0, $s0, 80
+	add $a1, $s1, $zero
+    jal draw_D
+    
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END DRAW_PAUSED
+
+paused_state:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
+    store_registers()
+    
+    lw $a0, ADDR_DSPL           # set the argument for row number to the 2nd row (bitmap address + 128)
+    addi $a0, $a0, 128
+    lw $a1, white               # set the colour argument to be white
+    
+    la $t0, current_screen
+    addi $t1, $zero, 3          # store the number 4 (paused_screen) at current_screen
+    sw $t1, 0($t0)
+    
+    jal draw_paused
+
+    # check for keypress = p or else quit
+    paused_state_loop:
+        jal check_key_press             # check for key press
+        add $t9, $v0, $zero             # load key press ascii into t9  
+        lw $t8, p                       # load the ascii for p into t8   
+        
+        li $v0, 32
+    	li $a0, 100
+    	syscall
+        bne $t9, $t8, paused_state_loop      # loop until p is pressed again
+    
+    # we know that outside this loop, the user pressed p
+    lw $a0, ADDR_DSPL           # set the argument for row number to the 2nd row (bitmap address + 128)
+    addi $a0, $a0, 128
+    lw $a1, black               # set the colour argument to be white
+    
+    jal draw_paused
+    
+    la $t0, current_screen
+    addi $t1, $zero, 1          # store the number 1 (game_screen) at current_screen
+    sw $t1, 0($t0)
+    
+    load_registers()
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END OF PAUSED STATE LOOP
 
