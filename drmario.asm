@@ -64,6 +64,9 @@ new_y2:                 .word 0             # current y of half 2
 colour_1:               .word 0             # current colour of half 1
 colour_2:               .word 0             # current colour of half 2
 
+next_pill_colour1:      .word 0xffffff             # next colour of half 1
+next_pill_colour2:      .word 0xffffff             # next colour of half 2
+
 capsuleID_count:        .word 0             # increases each time a capsule is added to the board
 capsuleID_max:          .word 0             # only used in drop to save the current capsuleID_count
 
@@ -163,6 +166,7 @@ main:
     jal generate_virus              # add viruses to game_array
     
     jal update_display
+    jal generate_pill               # initialise pill in data (curr_x, curr_y, new_x, new_y)
     jal generate_pill               # initialise pill in data (curr_x, curr_y, new_x, new_y)
     jal update_capsule_location     # initialise location of pill
     jal update_display              # draw the display
@@ -488,20 +492,34 @@ generate_pill:
     j game_over_screen
     
     skip_game_over:
-    la $t7, colour_1            # t7 = address of colour_1
-    jal generate_colour         # generate the left half of the pill and init at top of bottle
-    sw $v0, 0($t7)              # store generated colour in colour_1
+    # set current colours = next pill colours
+    la $t7, colour_1
+    lw $t8, next_pill_colour1
+    sw $t8, 0($t7)                  # store next_pill_colour1 at colour_1
     
+    la $t7, colour_2
+    lw $t8, next_pill_colour2
+    sw $t8, 0($t7)                  # store next_pill_colour2 at colour_2
+    
+    # generate colours for the next pills
+    la $t7, next_pill_colour1            # t7 = address of next_pill_colour1
+    jal generate_colour                  # generate the colour of the next pill
+    sw $v0, 0($t7)                       # store generated colour in next_pill_colour1
+    
+    la $t7, next_pill_colour2            # t7 = address of next_pill_colour2
+    jal generate_colour                  # generate the colour of the next pill
+    sw $v0, 0($t7)                       # store generated colour in next_pill_colour1
+    
+    # display the next pill on the bitmap
+    jal display_next_pill
+    
+    # reset curr_x, curr_y to initial positions
     la $t9, curr_x1             # t9 = address of x1
     la $t8, curr_y1             # t8 = address of y1
     lw $t1, init_x1             # load initial x1 value into t1
     lw $t2, init_y1             # load initial y1 value into t2
     sw $t1, 0($t9)              # store intial x1 value in curr_x1
     sw $t2, 0($t8)              # store intial y1 value in curr_y1
-    
-    la $t7, colour_2            # t7 = address of colour_1
-    jal generate_colour         # generate the right half of the pill and init at top of bottle
-    sw $v0, 0($t7)              # store generated colour in colour_1
     
     la $t9, curr_x2             # t9 = address of x2
     la $t8, curr_y2             # t8 = address of y2
@@ -510,6 +528,7 @@ generate_pill:
     sw $t1, 0($t9)              # store intial x2 value in curr_x2
     sw $t2, 0($t8)              # store intial y2 value in curr_y2
     
+    # add one to capsuleID_count
     la $t6, capsuleID_count     # address of capsuleID_count
     lw $t5, capsuleID_count     # value of capsuleID_count
     addi $t5, $t5, 1            # add one to the capsuleID_count
@@ -3060,6 +3079,8 @@ draw_paused:
     jr $ra
 # END DRAW_PAUSED
 
+# START OF PAUSED_STATE
+# pauses the game until the user presses p again
 paused_state:
     subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
     sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
@@ -3101,5 +3122,28 @@ paused_state:
     lw $ra, 0($sp)           # Load the saved value of $ra from the stack
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
     jr $ra
-# END OF PAUSED STATE LOOP
+# END OF PAUSED STATE 
 
+# START OF DISPLAY_NEXT_PILL
+# displays the next pill colours to the right of the bottle
+# inputs: a0 (bitmap address of top row/y value), a1 (colour)
+display_next_pill:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
+    store_registers()
+
+    lw $t5, ADDR_DSPL
+
+    lw $t9, next_pill_colour1
+    addi $t5, $t5, 2276
+    sw $t9, 0($t5)
+    
+    lw $t8, next_pill_colour2
+    addi $t5, $t5, 4
+    sw $t8, 0($t5)
+
+    load_registers()
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END OF DISPLAY_NEXT_PILL

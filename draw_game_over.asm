@@ -1214,7 +1214,7 @@ draw_paused:
     lw $ra, 0($sp)           # Load the saved value of $ra from the stack
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)
     jr $ra
-# END DRAW_RETRY
+# END DRAW_PAUSED
 
 # START OF RESET_GAME
 # reset game function
