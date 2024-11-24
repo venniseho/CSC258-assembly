@@ -273,8 +273,8 @@ game_loop:
 	location:
 	jal update_capsule_location             # after this call, the game_array locations should be updated
 	jal check_win
+	addi $a0, $zero, 1
 	beq $v0, 1, game_over_screen
-	
 	
 	# 3. Draw the screen
 	jal update_display
@@ -453,8 +453,8 @@ generate_pill:
     
     jal check_object_collision
     beq $v0, 0, skip_game_over      # if there is no object at 
-    li $v0, 10                      # quit gracefully
-    syscall
+    addi $a0, $zero, 0
+    j game_over_screen
     
     skip_game_over:
     la $t7, colour_1            # t7 = address of colour_1
@@ -1981,6 +1981,58 @@ draw_E:
     jr $ra
 # END OF DRAW_E
 
+# START OF DRAW_G
+# draws an G directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_G:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+	# 4 units across ---
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	
+	# 1 unit
+	addi $t0, $t0, 116           # increment t0 by start of next row (128 - 8)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 3 units with a space inbetween - --
+	addi $t0, $t0, 128           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 116           # increment t0 by 116 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 12             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+		# 3 units across ---
+	addi $t0, $t0, 116           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+    jr $ra
+# END DRAW_G
+
 # START OF DRAW_H
 # draws an H directly on the bitmap
 # inputs: a0 (bitmap address of top left point), a1 (colour)
@@ -2026,6 +2078,32 @@ draw_H:
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
     jr $ra
 # END DRAW_H
+
+# START OF DRAW_I
+# draws an I directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_I:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+	# 1 unit in the middle - x5
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 128         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 128         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 128         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 128         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	
+	lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END OF DRAW_I
 
 # START OF DRAW_M
 # draws an M directly on the bitmap
@@ -2082,6 +2160,100 @@ draw_M:
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
     jr $ra
 # END DRAW_M
+
+# START OF DRAW_N
+# draws an N directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_N:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+	# 3 units across ---
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by start of next row (128 - 8)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 3 units across ---
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+    jr $ra
+# END DRAW_N
+
+# START OF DRAW_O
+# draws an O directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_O:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+	# 3 units across ---
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by start of next row (128 - 8)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 3 units across ---
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+    jr $ra
+# END DRAW_O
 
 # START OF DRAW_R
 # draws an R directly on the bitmap
@@ -2181,6 +2353,187 @@ draw_S:
     jr $ra
 # END OF DRAW_S
 
+# START OF DRAW_T
+# draws an T directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_T:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+    # 3 units across
+    sw $t9, 0($t0)             # store the colour at the bitmap pointer
+    addi $t0, $t0, 4         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	
+	# 1 unit in the middle - x4
+	addi $t0, $t0, 124         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 128         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 128         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 128         # increment t0 by 124 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	
+	lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END OF DRAW_I
+
+# START OF DRAW_U
+# draws an U directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_U:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by start of next row (128 - 8)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 3 units across ---
+	addi $t0, $t0, 120           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+    jr $ra
+# END DRAW_U
+
+# START OF DRAW_V
+# draws an W directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_V:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 16             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 4 units with a space inbetween -- --
+	addi $t0, $t0, 112             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 8 (space in between)
+	
+	# 2 units with a space inbetween - -
+	addi $t0, $t0, 116             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 3 units ---
+	addi $t0, $t0, 120             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 1 unit in the middle
+	addi $t0, $t0, 124             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+    jr $ra
+# END DRAW_V
+
+# START OF DRAW_W
+# draws an W directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_W:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+	# 2 units with a space inbetween - -
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 16             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 3 units with a space inbetween - - -
+	addi $t0, $t0, 112           # increment t0 by start of next row (128 - 8)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 3 units with a space inbetween - - -
+	addi $t0, $t0, 112           # increment t0 by start of next row (128 - 8)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 3 units with a space inbetween - - -
+	addi $t0, $t0, 112           # increment t0 by start of next row (128 - 8)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 8             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 5 units across -----
+	addi $t0, $t0, 112           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	addi $t0, $t0, 4           # increment t0 by 4
+	sw $t9, 0($t0)             # store the colour at the bitmap pointer
+	
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+    jr $ra
+# END DRAW_W
+
 # START OF DRAW_Y
 # draws a Y directly on the bitmap
 # inputs: a0 (bitmap address of top left point), a1 (colour)
@@ -2227,6 +2580,46 @@ draw_Y:
     jr $ra
 # END DRAW_Y
 
+# START OF DRAW_QUESTION_MARK
+# draws a Y directly on the bitmap
+# inputs: a0 (bitmap address of top left point), a1 (colour)
+draw_question_mark:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+    
+	add $t9, $a1, $zero        # t9 = colour
+	add $t0, $a0, $zero        # t0 = bitmap pointer
+	
+	# 3 units ---
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 8 (space in between)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# two spaces, 1 unit -
+	addi $t0, $t0, 128           # increment t0 by start of next row (128 - 8)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# 2 units across ---
+	addi $t0, $t0, 124           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	addi $t0, $t0, 4             # increment t0 by 4
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# unit in the middle
+	addi $t0, $t0, 124           # increment t0 by 124 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+	# unit in the middle (dot of question mark)
+	addi $t0, $t0, 256           # increment t0 by 120 (next row)
+	sw $t9, 0($t0)               # store the colour at the bitmap pointer
+	
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+    jr $ra
+# END DRAW_QUESTION_MARK
+
 # START CLEAR_SCREEN
 # registers: t0 (bitmap pointer), t1 (the loop counter), t9 (the colour black)
 clear_screen: 
@@ -2247,11 +2640,6 @@ clear_screen:
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
     jr $ra
 # END OF CLEAR_SCREEN
-
-game_over_screen:
-li $v0, 10                      # quit gracefully
-syscall
-jr $ra
 
 # START CHECK_WIN
 # returns 0 if all viruses are not gone, and 1 if all virsues are gone
@@ -2287,5 +2675,249 @@ check_win:
     addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
     jr $ra
 # END CHECK_WIN
+
+# START OF DRAW_GAME
+# draws the word game in the centre of the top row of the bitmap
+# inputs: a0 (bitmap address of top row/y value), a1 (colour)
+draw_game:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
+    
+    add $s0, $a0, 28            # s0 = add 32 to row/y value for centring
+	add $s1, $a1, $zero         # s1 = colour
+	
+	add $a0, $s0, $zero
+	add $a1, $s1, $zero
+    jal draw_G
+    
+    add $a0, $s0, 20
+	add $a1, $s1, $zero
+    jal draw_A
+    
+    add $a0, $s0, 36
+	add $a1, $s1, $zero
+    jal draw_M
+    
+    add $a0, $s0, 60
+	add $a1, $s1, $zero
+    jal draw_E
+    
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END DRAW_GAME
+
+# START OF DRAW_OVER
+# draws the word game in the centre of the top row of the bitmap
+# inputs: a0 (bitmap address of top row/y value), a1 (colour)
+draw_over:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
+    
+    add $s0, $a0, 28            # s0 = add 32 to row/y value for centring
+	add $s1, $a1, $zero         # s1 = colour
+	
+	add $a0, $s0, $zero
+	add $a1, $s1, $zero
+    jal draw_O
+    
+    add $a0, $s0, 16
+	add $a1, $s1, $zero
+    jal draw_V
+    
+    add $a0, $s0, 40    
+	add $a1, $s1, $zero
+    jal draw_E
+    
+    add $a0, $s0, 56
+	add $a1, $s1, $zero
+    jal draw_R
+    
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END DRAW_OVER
+
+# START OF DRAW_RETRY
+# draws the word retry in the centre of the top row of the bitmap
+# inputs: a0 (bitmap address of top row/y value), a1 (colour)
+draw_retry:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
+    
+    add $s0, $a0, 16            # s0 = add 32 to row/y value for centring
+	add $s1, $a1, $zero         # s1 = colour
+	
+	add $a0, $s0, $zero
+	add $a1, $s1, $zero
+    jal draw_R
+	
+	add $a0, $s0, 20
+	add $a1, $s1, $zero
+    jal draw_E
+    
+    add $a0, $s0, 36
+	add $a1, $s1, $zero
+    jal draw_T
+    
+    add $a0, $s0, 52
+	add $a1, $s1, $zero
+    jal draw_R
+    
+    add $a0, $s0, 72
+	add $a1, $s1, $zero
+    jal draw_Y
+    
+    add $a0, $s0, 88
+	add $a1, $s1, $zero
+    jal draw_question_mark
+    
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END DRAW_RETRY
+
+# START OF DRAW_YOU
+# draws the word you in the centre of the top row of the bitmap
+# inputs: a0 (bitmap address of top row/y value), a1 (colour)
+draw_you:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
+    
+    addi $s0, $a0, 44            # s0 = add 32 to row/y value for centring
+	add $s1, $a1, $zero         # s1 = colour
+    
+    add $a0, $s0, $zero
+	add $a1, $s1, $zero
+    jal draw_Y
+    
+    addi $a0, $s0, 16
+	add $a1, $s1, $zero
+    jal draw_O
+    
+    addi $a0, $s0, 32
+	add $a1, $s1, $zero
+    jal draw_U
+    
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END DRAW_YOU
+
+# START OF DRAW_WIN
+# draws the word win in the centre of the top row of the bitmap
+# inputs: a0 (bitmap address of top row/y value), a1 (colour)
+draw_win:
+    subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+    sw $ra, 0($sp)              # Store the value of $ra at the top of the stack 
+    
+    addi $s0, $a0, 44            # s0 = add 32 to row/y value for centring
+	add $s1, $a1, $zero         # s1 = colour
+    
+    add $a0, $s0, $zero
+	add $a1, $s1, $zero
+    jal draw_W
+    
+    addi $a0, $s0, 24
+	add $a1, $s1, $zero
+    jal draw_I
+    
+    addi $a0, $s0, 32
+	add $a1, $s1, $zero
+    jal draw_N
+    
+    lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+    addi $sp, $sp, 4         # Increase the stack pointer (free up space)
+    jr $ra
+# END DRAW_WIN
+
+# GAME_OVER_SCREEN AND FUNCTIONALITY
+# inputs: a0 (win (1) or lose (0))
+# registers used: t0 (bitmap pointer), t3 (temp number), t4 (virus_number/game_speed), t5 (current_mode address), t6 (current_mode number), t8 (enter key ascii), t9 (keypress)
+game_over_screen:
+jal clear_screen
+beq $a0, 0, draw_game_over
+beq $a0, 1, draw_you_win
+
+draw_you_win:               # draw you win on the screen
+    lw $t0, ADDR_DSPL
+	addi $a0, $t0, 768
+	lw $a1, white
+	jal draw_you
+	
+	lw $t0, ADDR_DSPL         
+    addi $a0, $t0, 1664
+    lw $a1, white
+    jal draw_win
+	
+	j check_retry
+
+draw_game_over:             # draw game over on the screen
+    lw $t0, ADDR_DSPL
+	addi $a0, $t0, 768
+	lw $a1, white
+	jal draw_game
+
+    lw $t0, ADDR_DSPL          
+    addi $a0, $t0, 1664
+    lw $a1, white
+    jal draw_over
+    
+    j check_retry
+
+check_retry:
+    lw $t0, ADDR_DSPL          # draw retry on the screen
+    addi $a0, $t0, 2816
+    lw $a1, blue
+    jal draw_retry
+    
+    check_retry_loop: 
+    jal check_key_press
+    add $t9, $v0, $zero
+    lw $t8, enter
+    bne $t9, $t8, check_retry_loop
+    
+    # we know that outside this loop, the user pressed r because q quits.
+    jal reset_game
+    jal clear_screen
+    j main
+# END GAME_OVER_SCREEN
+
+
+# START OF RESET_GAME
+# reset game function
+reset_game:
+subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
+sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+# reset capsuleID_count to zero
+    la $t0, capsuleID_count     
+    sw $zero, 0($t0)
+
+# reset game_array to all black
+    la $t0, game_array           # set the bitmap pointer (t0) to the top left corner
+    lw $t9, black               # set the colour (t9) to black
+    add $t1, $zero, $zero       # initialise the loop counter
+        
+    clear_game_array_loop:
+        addi $t1, $t1, 1
+        sw $t9, 0($t0)
+        addi $t0, $t0, 4
+    blt $t1, 128, clear_game_array_loop
+
+# reset capsuleID_array to all 0s
+la $t0, capsuleID_array           # set the bitmap pointer (t0) to the top left corner
+add $t9, $zero, $zero             # set the colour (t9) to black
+add $t1, $zero, $zero             # initialise the loop counter
+
+clear_capsuleID_array_loop:
+    addi $t1, $t1, 1
+    sw $t9, 0($t0)
+    addi $t0, $t0, 4
+blt $t1, 128, clear_capsuleID_array_loop
+
+lw $ra, 0($sp)           # Load the saved value of $ra from the stack
+addi $sp, $sp, 4         # Increase the stack pointer (free up space)	
+jr $ra
+# END OF RESET_GAME
 
 exit:
