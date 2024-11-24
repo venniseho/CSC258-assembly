@@ -2904,7 +2904,6 @@ check_retry:
     j main
 # END GAME_OVER_SCREEN
 
-
 # START OF RESET_GAME
 # reset game function
 reset_game:
@@ -2941,4 +2940,3 @@ addi $sp, $sp, 4         # Increase the stack pointer (free up space)
 jr $ra
 # END OF RESET_GAME
 
-exit:
