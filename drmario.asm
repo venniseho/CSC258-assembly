@@ -72,6 +72,8 @@ current_screen:         .word 0             # 0 = mode_screen, 1 = game_screen, 
 virus_number:           .word 0
 game_speed:             .word 0 
 
+sleep_count:            .word 0             # counts the number of sleep cycles (0.1 sec)
+
 ##############################################################################
 # Code
 ##############################################################################
@@ -160,13 +162,38 @@ main:
     jal update_display              # draw the display
 
 game_loop:
-    
-    # skip_pill:
+     # 4. Sleep
+	li $v0, 32
+	li $a0, 100
+	syscall
+	
+	# gravity 
+	la $t0, sleep_count        # address of sleep_count
+	lw $t1, sleep_count        # value of sleep_count
+	
+	bge $t1, 9, trigger_gravity
+	j skip_trigger_gravity             # otherwise, we don't need to trigger gravity
+	
+	trigger_gravity:
+	add $t1, $zero, $zero
+	sw $t1, 0($t0)
+	
+	lw $t2, s
+	add $s0, $t2, $zero             # s0 = keypress (constant for the loop)
+	add $a0, $t2, $zero             # set a0 arg to be ascii of S
+	j simulate_gravity
+	
+	skip_trigger_gravity:
+	addi $t1, $t1, 1                   # increment sleep count by 1
+	sw $t1, 0($t0)                     # store sleep_count value 
+
     # 1A. CHECK IF KEY HAS BEEN PRESSED & 1B. CHECK WHICH KEY HAS BEEN PRESSED
     jal check_key_press
     
     add $s0, $v0, $zero             # s0 = keypress (constant for the loop)
     add $a0, $s0, $zero             # output key from check_key_press is the input to calculate_next_xy
+    
+    simulate_gravity:
     jal calculate_new_xy            # after this call, new_x and new_y will contain new positions
     
     # 2A. CHECK FOR COLLISIONS
@@ -282,10 +309,7 @@ game_loop:
     # 5. Go back to Step 1
     j game_loop
     
-    # # 4. Sleep
-	# li $v0, 32
-	# li $a0, 320
-	# syscall
+   
 
 ##############################################################################
 # FUNCTIONS
