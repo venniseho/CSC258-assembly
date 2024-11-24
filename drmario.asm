@@ -171,7 +171,8 @@ game_loop:
 	la $t0, sleep_count        # address of sleep_count
 	lw $t1, sleep_count        # value of sleep_count
 	
-	bge $t1, 9, trigger_gravity
+	lw $t3, game_speed
+	bge $t1, $t3, trigger_gravity
 	j skip_trigger_gravity             # otherwise, we don't need to trigger gravity
 	
 	trigger_gravity:
@@ -1638,11 +1639,10 @@ sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
     addi $t3, $zero, 4
     sw $t3, 0($t4)
 
-#################### SET GAME SPEED ######################
-# set game speed to
+# set game speed to 9 on easy mode
     la $t4, game_speed
-    # addi $t3, $zero, 4
-    # sw $t3, 0($t4)
+    addi $t3, $zero, 9
+    sw $t3, 0($t4)
     
 # change colour to blue
     lw $t0, ADDR_DSPL
@@ -1712,11 +1712,10 @@ sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
             addi $t3, $zero, 4
             sw $t3, 0($t4)
         
-        #################### SET GAME SPEED ######################
-        # set game speed to
+        # set game speed to 9 on easy mode
             la $t4, game_speed
-            # addi $t3, $zero, 4
-            # sw $t3, 0($t4)
+            addi $t3, $zero, 9
+            sw $t3, 0($t4)
             
         # change colour to blue
             lw $t0, ADDR_DSPL
@@ -1731,11 +1730,10 @@ sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
             addi $t3, $zero, 8
             sw $t3, 0($t4)
         
-        #################### SET GAME SPEED ######################
-        # set game speed to
+        # set game speed to 6 on medium mode
             la $t4, game_speed
-            # addi $t3, $zero, 4
-            # sw $t3, 0($t4)
+            addi $t3, $zero, 6
+            sw $t3, 0($t4)
             
         # change colour to blue
             lw $t0, ADDR_DSPL
@@ -1750,11 +1748,10 @@ sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
             addi $t3, $zero, 12
             sw $t3, 0($t4)
         
-        #################### SET GAME SPEED ######################
-        # set game speed to
+        # set game speed to 3 on hard mode
             la $t4, game_speed
-            # addi $t3, $zero, 4
-            # sw $t3, 0($t4)
+            addi $t3, $zero, 3
+            sw $t3, 0($t4)
             
         # change colour to blue
             lw $t0, ADDR_DSPL
