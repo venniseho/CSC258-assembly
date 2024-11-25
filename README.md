@@ -1,7 +1,8 @@
-- [X] **medicine_bottle_display**
-- [X] **generate_colour**
-- [X] **generate_pill** (edited to use array)
-- [X] **move_pill** (currently `move_pixel`)
+- [X] **medicine bottle display**
+- [X] **generate colour**
+- [X] **generate pill** (edited to use array)
+- [X] **move pill** (currently `move_pixel`)
+- [X] **collision**
 - [X] **merge**
 - [X] **drop**
 - [X] **end game**
