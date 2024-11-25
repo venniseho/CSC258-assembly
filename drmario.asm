@@ -3426,14 +3426,15 @@ play_music_note:
         add $a3, $t8, $zero             # volume
         syscall
         
-        blt $t5, 9044, play_note_loop_condition     # if music_array_offset < 9044 (end of array), loop again
+        blt $t5, 9040, play_note_loop_condition     # if music_array_offset < 9044 (end of array), loop again
         
         # otherwise, we know music_array_offset >= 9044 so reset music_array_offset and music_sleep_count to 0 then exit the loop
         la $t0, music_array_offset        # load the address of music_array_offset
         sw $zero, 0($t0)                  # reset music_array_offset to 0
         
-        la $t0, music_sleep_count         # load the address of music_array_offset
-        sw $zero, 0($t0)                  # reset music_sleep_count to 0
+        la $t0, music_sleep_count         # load the address of music_sleep_count
+        li $t9, -25
+        sw $t9, 0($t0)                  # reset music_sleep_count to 0
         
         j exit_play_music_note
 	    
