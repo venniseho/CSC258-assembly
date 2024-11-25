@@ -80,8 +80,8 @@ capsuleID_max:          .word 0             # only used in drop to save the curr
 current_mode:           .word 0             # used to set the mode to easy, medium, or hard
 current_screen:         .word 0             # 0 = mode_screen, 1 = game_screen, 2 = game_over_screen, 3 = paused_state
 
-virus_number:           .word 0
-game_speed:             .word 0 
+virus_number:           .word 0             # used to set the number of viruses (per the game mode)
+game_speed:             .word 0             # used to set the game speed (per the game mode) 
 
 sleep_count:            .word 0             # counts the number of sleep cycles (0.25 sec)
 
@@ -3047,6 +3047,9 @@ check_retry:
 reset_game:
 subi $sp, $sp, 4            # Decrease stack pointer (make space for a word)
 sw $ra, 0($sp)              # Store the value of $ra at the top of the stack
+# reset mode to 0 (easy)
+    la $t0, current_mode
+    sw $zero, 0($t0)
 # reset capsuleID_count to zero
     la $t0, capsuleID_count     
     sw $zero, 0($t0)
