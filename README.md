@@ -1,4 +1,15 @@
-- [X] **medicine_bottle_display**
-- [X] **generate_colour**
-- [X] **generate_pill** (edited to use array)
-- [ ] **move_pill** (currently `move_pixel`)
+- [X] **medicine bottle display**
+- [X] **generate colour**
+- [X] **generate pill** (edited to use array)
+- [X] **move pill** (currently `move_pixel`)
+- [X] **collision**
+- [X] **merge**
+- [X] **drop**
+- [X] **end game**
+- [X] **gravity** (easy feature 1)
+- [X] **easy, med, hard** (easy feature 3)
+- [X] **game over + retry** (easy feature 4)
+- [X] **sound effects** (easy feature 5)
+- [X] **pause** (easy feature 6)
+- [X] **preview next capsule** (easy feature 1)
+- [X] **theme music** (hard feature 5)
